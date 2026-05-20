@@ -1,0 +1,10 @@
+node_modules
+dist
+.turbo
+.env
+coverage
+data
+_bmad
+_bmad-output
+.agents
+docs

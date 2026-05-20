@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminCredential {
+  id           String   @id @default("admin")
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_credentials")
+}
+
+model ServiceSetting {
+  id                String   @id @default(cuid())
+  serviceKey        String   @unique @map("service_key")
+  baseUrl           String?  @map("base_url")
+  apiKeyEncrypted   String?  @map("api_key_encrypted")
+  usernameEncrypted String?  @map("username_encrypted")
+  passwordEncrypted String?  @map("password_encrypted")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("service_settings")
+}
+
+model WhatsAppServerGroup {
+  id        String   @id @default("server")
+  groupId   String   @map("group_id")
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("whatsapp_server_groups")
+}
+
+model WhatsAppContact {
+  id              String   @id @default(cuid())
+  whatsappId      String   @unique @map("whatsapp_id")
+  displayName     String   @map("display_name")
+  isInServerGroup Boolean  @default(true) @map("is_in_server_group")
+  lastSyncedAt    DateTime @map("last_synced_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  mappings        UserContactMapping[]
+
+  @@map("whatsapp_contacts")
+}
+
+model PlexUser {
+  id           String   @id @default(cuid())
+  plexUserId   String   @unique @map("plex_user_id")
+  username     String?
+  displayName  String   @map("display_name")
+  lastSyncedAt DateTime @map("last_synced_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  mappings     UserContactMapping[]
+
+  @@map("plex_users")
+}
+
+model UserContactMapping {
+  id                String         @id @default(cuid())
+  plexUserRecordId  String         @map("plex_user_record_id")
+  whatsappContactId String         @map("whatsapp_contact_id")
+  createdAt         DateTime       @default(now()) @map("created_at")
+  plexUser          PlexUser       @relation(fields: [plexUserRecordId], references: [id], onDelete: Cascade)
+  whatsappContact   WhatsAppContact @relation(fields: [whatsappContactId], references: [id], onDelete: Cascade)
+
+  @@unique([plexUserRecordId, whatsappContactId])
+  @@map("user_contact_mappings")
+}
+
+model MessageTemplate {
+  id           String   @id @default(cuid())
+  templateType String   @unique @map("template_type")
+  body         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("message_templates")
+}
+
+model NotificationJob {
+  id          String    @id @default(cuid())
+  type        String
+  targetType  String    @map("target_type")
+  targetId    String    @map("target_id")
+  payloadJson String    @map("payload_json")
+  status      String    @default("pending")
+  attempts    Int       @default(0)
+  dedupeKey   String    @unique @map("dedupe_key")
+  scheduledAt DateTime  @default(now()) @map("scheduled_at")
+  sentAt      DateTime? @map("sent_at")
+  failedAt    DateTime? @map("failed_at")
+  lastError   String?   @map("last_error")
+  requestId   String?   @map("request_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, scheduledAt])
+  @@map("notification_jobs")
+}
+
+model OperationalLog {
+  id          String   @id @default(cuid())
+  level       String
+  event       String
+  reason      String?
+  message     String
+  requestId   String?  @map("request_id")
+  contextJson String?  @map("context_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("operational_logs")
+}
+
+model MonthlyRecapLibrary {
+  id           String   @id @default(cuid())
+  plexKey      String   @unique @map("plex_key")
+  title        String
+  type         String?
+  included     Boolean  @default(true)
+  lastSyncedAt DateTime @map("last_synced_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("monthly_recap_libraries")
+}
+
+model MonthlyRecapRun {
+  id           String   @id @default(cuid())
+  month        String   @unique
+  status       String
+  reason       String?
+  source       String   @default("tautulli")
+  rankingJson  String   @default("[]") @map("ranking_json")
+  jobId        String?  @map("job_id")
+  requestId    String?  @map("request_id")
+  calculatedAt DateTime @map("calculated_at")
+  sentAt       DateTime? @map("sent_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([calculatedAt])
+  @@map("monthly_recap_runs")
+}
+
+model MediaAvailabilityEvent {
+  id            String   @id @default(cuid())
+  source        String
+  eventType     String   @map("event_type")
+  mediaType     String   @map("media_type")
+  title         String
+  ratingKey     String?  @map("rating_key")
+  tmdbId        String?  @map("tmdb_id")
+  seasonNumber  Int?     @map("season_number")
+  episodeNumber Int?     @map("episode_number")
+  releaseDate   DateTime? @map("release_date")
+  dedupeKey     String   @unique @map("dedupe_key")
+  payloadJson    String  @map("payload_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([source, eventType])
+  @@map("media_availability_events")
+}
+
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_settings")
+}

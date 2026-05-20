@@ -1,0 +1,18 @@
+{
+  "name": "whatsarr",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "prisma:generate": "pnpm --filter @whatsarr/api prisma:generate"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.21",
+    "turbo": "^2.5.3",
+    "typescript": "^5.8.3"
+  }
+}

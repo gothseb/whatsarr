@@ -1,0 +1,25 @@
+services:
+  whatsarr:
+    build:
+      context: .
+    container_name: whatsarr
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATA_DIR: /data
+      DATABASE_URL: file:/data/whatsarr.db
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY:-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET:-}
+    volumes:
+      - whatsarr-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+
+volumes:
+  whatsarr-data:

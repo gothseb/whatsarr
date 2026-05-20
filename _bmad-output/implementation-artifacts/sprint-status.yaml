@@ -1,0 +1,78 @@
+# generated: 2026-05-19T21:40:00+02:00
+# last_updated: 2026-05-20T00:00:00+02:00
+# project: whatsarr
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: N:\windsurf\whatsarr\_bmad-output\implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+generated: "2026-05-19T21:40:00+02:00"
+last_updated: "2026-05-20T15:35:00+02:00"
+project: "whatsarr"
+project_key: "NOKEY"
+tracking_system: "file-system"
+story_location: 'N:\windsurf\whatsarr\_bmad-output\implementation-artifacts'
+
+development_status:
+  epic-1: in-progress
+  1-1-set-up-initial-project-from-starter-template: review
+  1-2-creer-l-acces-administrateur-local: review
+  1-3-stocker-la-configuration-et-les-secrets: review
+  1-4-configurer-les-services-media-dans-l-interface: review
+  1-5-tester-les-connexions-aux-services-media: review
+  epic-1-retrospective: optional
+  epic-2: in-progress
+  2-1-preparer-l-adaptateur-whatsapp-web: review
+  2-2-connecter-whatsapp-via-qr-code: review
+  2-3-persister-et-restaurer-la-session-whatsapp: review
+  2-4-limiter-la-v1-a-une-seule-session-whatsapp: review
+  2-5-lister-les-groupes-whatsapp: review
+  2-6-definir-le-groupe-whatsapp-du-serveur: review
+  2-7-importer-et-rafraichir-les-membres-du-groupe-serveur: review
+  epic-2-retrospective: optional
+  epic-3: in-progress
+  3-1-importer-les-utilisateurs-plex: review
+  3-2-afficher-les-contacts-whatsapp-et-utilisateurs-plex-a-lier: review
+  3-3-associer-un-utilisateur-plex-a-un-contact-whatsapp: review
+  3-4-associer-plusieurs-contacts-whatsapp-a-un-utilisateur-plex: review
+  3-5-supprimer-ou-modifier-un-mapping: review
+  3-6-signaler-les-utilisateurs-non-notifiables: review
+  epic-3-retrospective: optional
+  epic-4: in-progress
+  4-1-creer-le-moteur-de-templates-de-messages: review
+  4-2-creer-l-outbox-de-notifications-whatsapp: review
+  4-3-executer-les-jobs-d-envoi-whatsapp: review
+  4-4-detecter-les-nouvelles-disponibilites-plex: review
+  4-5-enrichir-les-contenus-avec-tmdb: review
+  4-6-filtrer-les-nouveautes-recentes: review
+  4-7-publier-les-annonces-groupe-de-nouveautes: review
+  4-8-detecter-et-notifier-une-demande-disponible: review
+  4-9-detecter-et-notifier-les-nouveaux-episodes: review
+  4-10-afficher-les-statuts-et-erreurs-des-messages-automatiques: review
+  epic-4-retrospective: optional
+  epic-5: in-progress
+  5-1-configurer-les-bibliotheques-du-recap-mensuel: review
+  5-2-collecter-les-statistiques-de-visionnage-mensuelles: review
+  5-3-classer-films-et-series-par-utilisateurs-distincts: review
+  5-4-generer-et-envoyer-le-recap-mensuel: review
+  5-5-afficher-le-statut-du-recap-mensuel: review
+  5-6-centraliser-les-logs-operationnels: review
+  5-7-exposer-les-statuts-live-de-l-application: review
+  epic-5-retrospective: optional

@@ -97,7 +97,11 @@ const WHATSAPP_STATE_LABELS: Record<PublicWhatsAppStatus["state"], string> = {
 type View = "dashboard" | "settings" | "whatsapp" | "mapping" | "templates" | "messages";
 
 export function App() {
-  const [auth, setAuth] = useState({ isSetupComplete: false, isAuthenticated: false });
+  const [auth, setAuth] = useState({
+    isSetupComplete: false,
+    isAuthenticated: false,
+    isAuthDisabled: false
+  });
   const [services, setServices] = useState<ServiceSettings[]>([]);
   const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(true);
@@ -124,8 +128,12 @@ export function App() {
   }
 
   async function handleLogout() {
+    if (auth.isAuthDisabled) {
+      return;
+    }
+
     await logout();
-    setAuth({ isSetupComplete: true, isAuthenticated: false });
+    setAuth({ isSetupComplete: true, isAuthenticated: false, isAuthDisabled: false });
     setServices([]);
   }
 
@@ -215,9 +223,11 @@ export function App() {
                 : viewDescription(view)}
             </p>
           </div>
-          <button className="icon-button" type="button" onClick={handleLogout} title="Deconnexion">
-            <LogOut size={18} />
-          </button>
+          {!auth.isAuthDisabled ? (
+            <button className="icon-button" type="button" onClick={handleLogout} title="Deconnexion">
+              <LogOut size={18} />
+            </button>
+          ) : null}
         </header>
 
         {error ? <div className="notice error">{error}</div> : null}

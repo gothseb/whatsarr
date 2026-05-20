@@ -9,12 +9,16 @@ export class AuthController {
 
   @Get("status")
   async getStatus(@Req() request: Request) {
+    const isAuthDisabled = this.authService.isAuthDisabled();
     const isSetupComplete = await this.authService.isSetupComplete();
     const isAuthenticated =
-      isSetupComplete &&
-      this.authService.verifySession(request.cookies?.[this.authService.cookieName]);
+      isAuthDisabled ||
+      (isSetupComplete &&
+        this.authService.verifySession(
+          request.cookies?.[this.authService.cookieName]
+        ));
 
-    return { isSetupComplete, isAuthenticated };
+    return { isSetupComplete, isAuthenticated, isAuthDisabled };
   }
 
   @Post("setup")

@@ -19,6 +19,7 @@ import type {
 export interface AuthStatus {
   isSetupComplete: boolean;
   isAuthenticated: boolean;
+  isAuthDisabled: boolean;
 }
 
 export interface ServiceSettings {

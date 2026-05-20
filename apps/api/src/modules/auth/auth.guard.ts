@@ -12,6 +12,10 @@ export class AuthGuard implements CanActivate {
   constructor(private readonly authService: AuthService) {}
 
   async canActivate(context: ExecutionContext) {
+    if (this.authService.isAuthDisabled()) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest<Request>();
     const token = request.cookies?.[this.authService.cookieName];
 

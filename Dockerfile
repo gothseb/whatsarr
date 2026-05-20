@@ -27,6 +27,7 @@ ENV DATA_DIR=/data
 ENV DATABASE_URL=file:/data/whatsarr.db
 ENV WEB_DIST_DIR=/app/apps/web/dist
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV AUTH_DISABLED=true
 WORKDIR /app
 RUN apt-get update \
   && apt-get install -y --no-install-recommends chromium fonts-liberation \

@@ -20,7 +20,15 @@ export class AuthService {
     return SESSION_COOKIE;
   }
 
+  isAuthDisabled() {
+    return process.env.AUTH_DISABLED !== "false";
+  }
+
   async isSetupComplete() {
+    if (this.isAuthDisabled()) {
+      return true;
+    }
+
     const count = await this.prisma.adminCredential.count();
     return count > 0;
   }

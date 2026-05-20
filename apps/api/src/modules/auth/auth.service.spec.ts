@@ -3,6 +3,7 @@ import { AuthService } from "./auth.service";
 
 describe("AuthService", () => {
   afterEach(() => {
+    delete process.env.AUTH_DISABLED;
     delete process.env.COOKIE_SECURE;
   });
 
@@ -23,6 +24,22 @@ describe("AuthService", () => {
     process.env.COOKIE_SECURE = "true";
 
     expect(service.getCookieOptions().secure).toBe(true);
+  });
+
+  it("disables admin setup by default unless explicitly required", async () => {
+    const prisma = mockPrisma();
+    const service = new AuthService(prisma as never);
+
+    expect(service.isAuthDisabled()).toBe(true);
+    await expect(service.isSetupComplete()).resolves.toBe(true);
+    expect(prisma.adminCredential.count).not.toHaveBeenCalled();
+
+    process.env.AUTH_DISABLED = "false";
+    prisma.adminCredential.count.mockResolvedValue(0);
+
+    expect(service.isAuthDisabled()).toBe(false);
+    await expect(service.isSetupComplete()).resolves.toBe(false);
+    expect(prisma.adminCredential.count).toHaveBeenCalledOnce();
   });
 });
 

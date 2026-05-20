@@ -223,15 +223,7 @@ export class MediaService {
       throw new BadRequestException("Overseerr ne route que les films et saisons 1.");
     }
 
-    if (
-      input.mediaType === "episode" ||
-      input.mediaType === "season" ||
-      (input.seasonNumber ?? 0) >= 2
-    ) {
-      return { ...input, source: "plex" as const, eventType: "media.availability.routed" };
-    }
-
-    throw new BadRequestException("Plex est requis pour les saisons 2+ et episodes.");
+    return { ...input, source: "plex" as const, eventType: "media.availability.routed" };
   }
 
   private availabilityDedupeKey(input: MediaAvailabilityDto & { eventType: string }) {

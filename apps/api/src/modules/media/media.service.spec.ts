@@ -54,6 +54,31 @@ describe("MediaService", () => {
     );
   });
 
+  it("accepts Plex movie availability from Tautulli webhooks", async () => {
+    const notifications = createNotifications();
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications
+    );
+
+    const result = await service.routeAvailability({
+      source: "plex",
+      mediaType: "movie",
+      title: "Dune",
+      ratingKey: "123"
+    });
+
+    expect(result.job).toMatchObject({
+      type: "announcement",
+      targetId: "server-group@g.us"
+    });
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dedupeKey: expect.stringContaining("availability:plex:movie:123")
+      })
+    );
+  });
+
   it("creates one request notification per linked WhatsApp contact", async () => {
     const notifications = createNotifications();
     const mapping = {

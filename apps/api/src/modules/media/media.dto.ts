@@ -8,6 +8,7 @@ import {
   Max,
   Min
 } from "class-validator";
+import { Transform } from "class-transformer";
 
 export class MediaAvailabilityDto {
   @IsIn(["overseerr", "plex"])
@@ -27,10 +28,12 @@ export class MediaAvailabilityDto {
   @IsOptional()
   tmdbId?: string;
 
+  @Transform(toOptionalInt)
   @IsInt()
   @IsOptional()
   seasonNumber?: number;
 
+  @Transform(toOptionalInt)
   @IsInt()
   @IsOptional()
   episodeNumber?: number;
@@ -67,8 +70,18 @@ export class MediaAvailabilityDto {
 }
 
 export class RecentWindowDto {
+  @Transform(toOptionalInt)
   @IsInt()
   @Min(1)
   @Max(60)
   months!: number;
+}
+
+function toOptionalInt({ value }: { value: unknown }) {
+  if (value === "" || value === null || value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : value;
 }

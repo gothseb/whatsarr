@@ -257,9 +257,18 @@ async function request<T>(url: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(body.message ?? "Erreur API inattendue.");
+    const body = await parseJsonResponse<{ message?: string }>(response);
+    throw new Error(body?.message ?? "Erreur API inattendue.");
   }
 
-  return response.json() as Promise<T>;
+  return parseJsonResponse<T>(response);
+}
+
+async function parseJsonResponse<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text) as T;
 }

@@ -40,7 +40,7 @@ describe("MonthlyRecapService", () => {
             data: {
               data: [
                 tautulliRow({ rating_key: "m1", title: "Dune", user: "seb" }),
-                tautulliRow({ rating_key: "m1", title: "Dune", user: "seb" }),
+                tautulliRow({ rating_key: "m1", title: "Dune", user: "seb", section_id: 1 }),
                 tautulliRow({ rating_key: "m1", title: "Dune", user: "camille" }),
                 tautulliRow({
                   media_type: "episode",
@@ -48,7 +48,8 @@ describe("MonthlyRecapService", () => {
                   grandparent_rating_key: "s1",
                   title: "Episode 1",
                   grandparent_title: "Severance",
-                  user: "seb"
+                  user: "seb",
+                  section_id: 1
                 })
               ]
             }

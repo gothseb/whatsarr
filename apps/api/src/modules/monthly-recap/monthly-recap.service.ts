@@ -588,5 +588,13 @@ function readArray(value: unknown): unknown[] {
 }
 
 function readNullableString(value: unknown) {
-  return typeof value === "string" && value.trim() ? value : null;
+  if (typeof value === "string") {
+    return value.trim() ? value : null;
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  return null;
 }

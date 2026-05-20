@@ -33,6 +33,8 @@ RUN apt-get update \
   && chown -R node:node /data /app
 COPY --from=build --chown=node:node /app/runtime ./
 COPY --from=build --chown=node:node /app/apps/api/prisma ./apps/api/prisma
+RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma \
+  && chown -R node:node /app
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/apps/web/dist ./apps/web/dist
 USER node

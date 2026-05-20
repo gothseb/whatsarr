@@ -4,6 +4,8 @@ dist
 .env
 coverage
 data
+**/data
+**/.wwebjs_cache
 _bmad
 _bmad-output
 .agents

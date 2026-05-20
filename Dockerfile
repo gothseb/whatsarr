@@ -16,6 +16,9 @@ COPY . .
 RUN pnpm --filter @whatsarr/api prisma:generate
 RUN pnpm build
 RUN pnpm --filter @whatsarr/api deploy --prod /app/runtime
+RUN generated_prisma_dir="$(find /app/node_modules/.pnpm -path '*/node_modules/.prisma' -type d | head -n 1)" \
+  && runtime_prisma_parent="$(find /app/runtime/node_modules/.pnpm -path '*/node_modules/@prisma/client' -type d | sed 's#/node_modules/@prisma/client$#/node_modules#' | head -n 1)" \
+  && cp -R "$generated_prisma_dir" "$runtime_prisma_parent/.prisma"
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
@@ -33,8 +36,6 @@ RUN apt-get update \
   && chown -R node:node /data /app
 COPY --from=build --chown=node:node /app/runtime ./
 COPY --from=build --chown=node:node /app/apps/api/prisma ./apps/api/prisma
-RUN pnpm exec prisma generate --schema=apps/api/prisma/schema.prisma \
-  && chown -R node:node /app
 COPY --from=build --chown=node:node /app/apps/api/dist ./apps/api/dist
 COPY --from=build --chown=node:node /app/apps/web/dist ./apps/web/dist
 USER node

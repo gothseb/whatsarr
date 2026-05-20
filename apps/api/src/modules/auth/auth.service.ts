@@ -83,7 +83,7 @@ export class AuthService {
     return {
       httpOnly: true,
       sameSite: "lax" as const,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.COOKIE_SECURE === "true",
       path: "/",
       maxAge: SESSION_TTL_MS
     };

@@ -53,7 +53,8 @@ export class MediaService {
         message: `Disponibilite dedupliquee: ${routed.title}`,
         context: { dedupeKey }
       });
-      return { event: this.toPublicEvent(existing), job: null };
+      const requestJobs = await this.createRequestAvailableJobs(routed);
+      return { event: this.toPublicEvent(existing), job: null, requestJobs };
     }
 
     const enriched = await this.enrichMedia(routed, requestId);
@@ -86,6 +87,7 @@ export class MediaService {
       return { event: this.toPublicEvent(row), job: null };
     }
 
+    const requestJobs = await this.createRequestAvailableJobs(routed);
     const group = await this.prisma.whatsAppServerGroup.findUnique({
       where: { id: "server" }
     });
@@ -98,7 +100,7 @@ export class MediaService {
         message: "WHATSAPP_GROUP_NOT_SELECTED",
         context: { dedupeKey }
       });
-      return { event: this.toPublicEvent(row), job: null };
+      return { event: this.toPublicEvent(row), job: null, requestJobs };
     }
 
     const job = await this.notifications.createJob({
@@ -123,12 +125,11 @@ export class MediaService {
       }
     });
 
-    return { event: this.toPublicEvent(row), job };
+    return { event: this.toPublicEvent(row), job, requestJobs };
   }
 
   async notifyRequestAvailable(input: MediaAvailabilityDto) {
-    const users = unique(input.requesterPlexUserIds ?? []);
-    return this.createContactJobs(input, users, "request_available");
+    return { jobs: await this.createRequestAvailableJobs(input) };
   }
 
   async notifyNewEpisode(input: MediaAvailabilityDto) {
@@ -147,6 +148,15 @@ export class MediaService {
     }
 
     return this.createContactJobs(input, users, "new_episode");
+  }
+
+  private async createRequestAvailableJobs(input: MediaAvailabilityDto) {
+    const users = unique(input.requesterPlexUserIds ?? []);
+    if (users.length === 0) {
+      return [];
+    }
+
+    return (await this.createContactJobs(input, users, "request_available")).jobs;
   }
 
   private async createContactJobs(

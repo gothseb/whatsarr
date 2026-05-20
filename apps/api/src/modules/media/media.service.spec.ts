@@ -80,6 +80,41 @@ describe("MediaService", () => {
       })
     );
   });
+
+  it("creates group and requester notifications from one availability webhook", async () => {
+    const notifications = createNotifications();
+    const mapping = {
+      resolveRecipients: vi.fn(async () => [
+        { whatsappId: "336@g.us", displayName: "Camille" }
+      ])
+    };
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications,
+      mapping
+    );
+
+    const result = await service.routeAvailability({
+      source: "overseerr",
+      mediaType: "movie",
+      title: "Dune",
+      requesterPlexUserIds: ["alice"]
+    });
+
+    expect(result.job).toMatchObject({
+      type: "announcement",
+      targetId: "server-group@g.us"
+    });
+    expect(result.requestJobs).toHaveLength(1);
+    expect(notifications.createJob).toHaveBeenCalledTimes(2);
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "request_available",
+        targetId: "336@g.us"
+      })
+    );
+    expect(mapping.resolveRecipients).toHaveBeenCalledWith("alice");
+  });
 });
 
 function createService(
@@ -105,7 +140,7 @@ function createNotifications() {
   };
 }
 
-function createPrisma() {
+function createPrisma({ groupId = null }: { groupId?: string | null } = {}) {
   const events: Array<Record<string, unknown>> = [];
   return {
     appSetting: {
@@ -127,7 +162,16 @@ function createPrisma() {
       })
     },
     whatsAppServerGroup: {
-      findUnique: vi.fn(async () => null)
+      findUnique: vi.fn(async () =>
+        groupId
+          ? {
+              id: "server",
+              groupId,
+              name: "Serveur",
+              updatedAt: now
+            }
+          : null
+      )
     }
   };
 }

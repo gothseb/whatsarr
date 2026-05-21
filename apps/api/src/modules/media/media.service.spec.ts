@@ -74,7 +74,7 @@ describe("MediaService", () => {
     });
     expect(notifications.createJob).toHaveBeenCalledWith(
       expect.objectContaining({
-        dedupeKey: expect.stringContaining("availability:plex:movie:123")
+        dedupeKey: expect.stringContaining("availability:movie:123")
       })
     );
   });
@@ -139,6 +139,36 @@ describe("MediaService", () => {
       })
     );
     expect(mapping.resolveRecipients).toHaveBeenCalledWith("alice");
+  });
+
+  it("deduplicates the same media across Overseerr and Plex sources", async () => {
+    const notifications = createNotifications();
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications
+    );
+
+    await service.routeAvailability({
+      source: "overseerr",
+      mediaType: "movie",
+      title: "Dune",
+      tmdbId: "693134"
+    });
+    const duplicate = await service.routeAvailability({
+      source: "plex",
+      mediaType: "movie",
+      title: "Dune",
+      tmdbId: "693134"
+    });
+
+    expect(duplicate.job).toBeNull();
+    expect(notifications.createJob).toHaveBeenCalledTimes(1);
+    expect(notifications.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "media.availability.deduplicated",
+        reason: "dedupe_key"
+      })
+    );
   });
 });
 

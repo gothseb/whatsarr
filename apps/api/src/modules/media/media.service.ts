@@ -229,7 +229,6 @@ export class MediaService {
   private availabilityDedupeKey(input: MediaAvailabilityDto & { eventType: string }) {
     return [
       "availability",
-      input.source,
       input.mediaType,
       dedupeMediaId(input),
       input.seasonNumber ?? 0

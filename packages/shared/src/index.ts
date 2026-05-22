@@ -156,7 +156,8 @@ export interface PublicMonthlyRecapLibrary {
   plexKey: string;
   title: string;
   type: string | null;
-  included: boolean;
+  recapIncluded: boolean;
+  notificationIncluded: boolean;
   lastSyncedAt: string;
 }
 
@@ -164,6 +165,8 @@ export interface PublicMonthlyRecapRankingEntry {
   key: string;
   title: string;
   mediaType: "movie" | "series";
+  libraryKey: string;
+  libraryTitle: string;
   distinctUserCount: number;
   rawPlayCount: number;
 }
@@ -171,7 +174,7 @@ export interface PublicMonthlyRecapRankingEntry {
 export interface PublicMonthlyRecapStatus {
   id: string;
   month: string;
-  status: "queued" | "sent" | "failed" | "ignored" | "empty";
+  status: "queued" | "calculated" | "sent" | "failed" | "ignored" | "empty";
   reason: string | null;
   source: string;
   ranking: PublicMonthlyRecapRankingEntry[];

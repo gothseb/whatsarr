@@ -356,16 +356,48 @@ function DashboardPage() {
     }
   }
 
-  async function toggleLibrary(plexKey: string) {
+  async function toggleRecapLibrary(plexKey: string) {
     setBusy(true);
     setError(null);
     try {
       const includedLibraryKeys = libraries
         .filter((library) =>
-          library.plexKey === plexKey ? !library.included : library.included
+          library.plexKey === plexKey ? !library.recapIncluded : library.recapIncluded
         )
         .map((library) => library.plexKey);
-      const updated = await updateMonthlyRecapLibraries(includedLibraryKeys);
+      const notificationLibraryKeys = libraries
+        .filter((library) => library.notificationIncluded)
+        .map((library) => library.plexKey);
+      const updated = await updateMonthlyRecapLibraries(
+        includedLibraryKeys,
+        notificationLibraryKeys
+      );
+      setLibraries(updated.items);
+    } catch (err) {
+      setError(readError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function toggleNotificationLibrary(plexKey: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const includedLibraryKeys = libraries
+        .filter((library) => library.recapIncluded)
+        .map((library) => library.plexKey);
+      const notificationLibraryKeys = libraries
+        .filter((library) =>
+          library.plexKey === plexKey
+            ? !library.notificationIncluded
+            : library.notificationIncluded
+        )
+        .map((library) => library.plexKey);
+      const updated = await updateMonthlyRecapLibraries(
+        includedLibraryKeys,
+        notificationLibraryKeys
+      );
       setLibraries(updated.items);
     } catch (err) {
       setError(readError(err));
@@ -404,6 +436,8 @@ function DashboardPage() {
   if (loading) {
     return <LoadingScreen inline />;
   }
+
+  const rankingByLibrary = groupRankingByLibrary(recapStatus?.ranking ?? []);
 
   return (
     <div className="dashboard-layout">
@@ -444,26 +478,44 @@ function DashboardPage() {
         <article className="service-panel">
           <header>
             <div>
-              <h2>Bibliotheques recap</h2>
-              <p>{libraries.filter((library) => library.included).length} active(s)</p>
+              <h2>Bibliotheques</h2>
+              <p>
+                {libraries.filter((library) => library.recapIncluded).length} recap,
+                {" "}
+                {libraries.filter((library) => library.notificationIncluded).length} messages
+              </p>
             </div>
             <Server size={20} />
           </header>
           <div className="library-list">
             {libraries.map((library) => (
-              <button
-                className={`library-row ${library.included ? "selected" : ""}`}
-                disabled={busy}
+              <div
+                className={`library-row ${library.recapIncluded ? "selected" : ""}`}
                 key={library.plexKey}
-                onClick={() => toggleLibrary(library.plexKey)}
-                type="button"
               >
                 <span>
                   <strong>{library.title}</strong>
                   <small>{library.type ?? "Bibliotheque Plex"} - {library.plexKey}</small>
                 </span>
-                <em>{library.included ? "Incluse" : "Exclue"}</em>
-              </button>
+                <div className="library-actions">
+                  <button
+                    className={`mini-toggle ${library.recapIncluded ? "active" : ""}`}
+                    disabled={busy}
+                    onClick={() => toggleRecapLibrary(library.plexKey)}
+                    type="button"
+                  >
+                    Recap
+                  </button>
+                  <button
+                    className={`mini-toggle ${library.notificationIncluded ? "active" : ""}`}
+                    disabled={busy}
+                    onClick={() => toggleNotificationLibrary(library.plexKey)}
+                    type="button"
+                  >
+                    Messages
+                  </button>
+                </div>
+              </div>
             ))}
           </div>
         </article>
@@ -533,7 +585,7 @@ function DashboardPage() {
           </div>
           <button className="primary-button full-width" disabled={busy} onClick={triggerRecap} type="button">
             {busy ? <Loader2 className="spin" size={17} /> : <Bell size={17} />}
-            Calculer
+            Calculer sans envoyer
           </button>
         </article>
 
@@ -546,18 +598,56 @@ function DashboardPage() {
             <ListChecks size={20} />
           </header>
           <div className="ranking-list">
-            {recapStatus?.ranking.slice(0, 8).map((entry, index) => (
-              <div className="ranking-row" key={entry.key}>
-                <strong>{index + 1}. {entry.title}</strong>
-                <span>{entry.distinctUserCount} utilisateur(s)</span>
-                <small>{entry.mediaType === "movie" ? "Film" : "Serie"} - {entry.rawPlayCount} lecture(s)</small>
+            {rankingByLibrary.length ? rankingByLibrary.map((group) => (
+              <div className="ranking-group" key={group.libraryKey}>
+                <div className="ranking-group-title">
+                  <strong>{group.libraryTitle}</strong>
+                  <small>{group.entries.length} entree(s)</small>
+                </div>
+                {group.entries.map((entry, index) => (
+                  <div className="ranking-row compact" key={entry.key}>
+                    <strong>{index + 1}. {entry.title}</strong>
+                    <span>{entry.distinctUserCount} utilisateur(s)</span>
+                    <small>{entry.mediaType === "movie" ? "Film" : "Serie"} - {entry.rawPlayCount} lecture(s)</small>
+                  </div>
+                ))}
               </div>
-            ))}
+            )) : (
+              <div className="ranking-row">
+                <strong>Aucun classement disponible</strong>
+                <span>{recapStatus ? recapReasonLabel(recapStatus.reason) : "Lancez un calcul"}</span>
+              </div>
+            )}
           </div>
         </article>
       </aside>
     </div>
   );
+}
+
+function groupRankingByLibrary(entries: PublicMonthlyRecapStatus["ranking"]) {
+  const groups = new Map<
+    string,
+    {
+      libraryKey: string;
+      libraryTitle: string;
+      entries: PublicMonthlyRecapStatus["ranking"];
+    }
+  >();
+
+  for (const entry of entries) {
+    const libraryKey = entry.libraryKey ?? "all";
+    const libraryTitle = entry.libraryTitle ?? "Bibliotheques";
+    const group = groups.get(libraryKey) ?? {
+      libraryKey,
+      libraryTitle,
+      entries: []
+    };
+    group.entries.push(entry);
+    groups.set(entry.libraryKey, group);
+  }
+
+  return Array.from(groups.values());
 }
 
 function StatusTile({
@@ -592,6 +682,9 @@ function recapReasonLabel(reason: string | null) {
   }
   if (reason === "stats_source_unavailable") {
     return "Source de statistiques indisponible";
+  }
+  if (reason === "manual_preview") {
+    return "Classement calcule sans envoi";
   }
   return reason ?? "Pret";
 }

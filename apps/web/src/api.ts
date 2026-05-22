@@ -210,10 +210,13 @@ export async function getMonthlyRecapLibraries() {
   return request<{ items: PublicMonthlyRecapLibrary[] }>("/api/monthly-recap/libraries");
 }
 
-export async function updateMonthlyRecapLibraries(includedLibraryKeys: string[]) {
+export async function updateMonthlyRecapLibraries(
+  includedLibraryKeys: string[],
+  notificationLibraryKeys: string[]
+) {
   return request<{ items: PublicMonthlyRecapLibrary[] }>("/api/monthly-recap/libraries", {
     method: "PUT",
-    body: JSON.stringify({ includedLibraryKeys })
+    body: JSON.stringify({ includedLibraryKeys, notificationLibraryKeys })
   });
 }
 
@@ -235,10 +238,10 @@ export async function updateMonthlyRecapSchedule(
   });
 }
 
-export async function runMonthlyRecap(referenceDate?: string) {
+export async function runMonthlyRecap(referenceDate?: string, send = false) {
   return request<PublicMonthlyRecapStatus | null>("/api/monthly-recap/run", {
     method: "POST",
-    body: JSON.stringify({ referenceDate })
+    body: JSON.stringify({ referenceDate, send })
   });
 }
 

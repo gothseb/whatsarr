@@ -170,6 +170,130 @@ describe("MediaService", () => {
       })
     );
   });
+
+  it("does not announce follow-up episodes to the group", async () => {
+    const notifications = createNotifications();
+    const mapping = {
+      resolveRecipients: vi.fn(async () => [
+        { whatsappId: "336@g.us", displayName: "Camille" }
+      ])
+    };
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications,
+      mapping
+    );
+
+    const result = await service.routeAvailability({
+      source: "plex",
+      mediaType: "episode",
+      title: "Severance",
+      ratingKey: "episode-2",
+      seasonNumber: 1,
+      episodeNumber: 2,
+      requesterPlexUserIds: ["alice"]
+    });
+
+    expect(result.job).toBeNull();
+    expect(result.requestJobs).toHaveLength(1);
+    expect(notifications.createJob).toHaveBeenCalledTimes(1);
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "request_available",
+        targetId: "336@g.us"
+      })
+    );
+    expect(notifications.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "announcement.skipped",
+        reason: "episode_followup"
+      })
+    );
+  });
+
+  it("announces only first episodes to the group from new episode webhooks", async () => {
+    const notifications = createNotifications();
+    const mapping = {
+      resolveRecipients: vi.fn(async () => [
+        { whatsappId: "336@g.us", displayName: "Camille" }
+      ])
+    };
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications,
+      mapping
+    );
+
+    await service.notifyNewEpisode({
+      source: "plex",
+      mediaType: "episode",
+      title: "Severance",
+      ratingKey: "episode-5",
+      seasonNumber: 2,
+      episodeNumber: 5,
+      viewerPlexUserIds: ["alice"]
+    });
+
+    expect(notifications.createJob).toHaveBeenCalledTimes(1);
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "new_episode",
+        targetId: "336@g.us"
+      })
+    );
+
+    await service.notifyNewEpisode({
+      source: "plex",
+      mediaType: "episode",
+      title: "Severance",
+      ratingKey: "episode-1",
+      seasonNumber: 2,
+      episodeNumber: 1,
+      viewerPlexUserIds: ["alice"]
+    });
+
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "announcement",
+        targetId: "server-group@g.us"
+      })
+    );
+  });
+
+  it("skips group and contact notifications for disabled notification libraries", async () => {
+    const notifications = createNotifications();
+    const mapping = {
+      resolveRecipients: vi.fn(async () => [
+        { whatsappId: "336@g.us", displayName: "Camille" }
+      ])
+    };
+    const service = createService(
+      createPrisma({
+        groupId: "server-group@g.us",
+        libraries: [{ plexKey: "7", title: "Films VO", notificationIncluded: false }]
+      }),
+      notifications,
+      mapping
+    );
+
+    const result = await service.routeAvailability({
+      source: "plex",
+      mediaType: "movie",
+      title: "Dune",
+      ratingKey: "123",
+      library_name: "Films VO",
+      requesterPlexUserIds: ["alice"]
+    });
+
+    expect(result.job).toBeNull();
+    expect(result.requestJobs).toEqual([]);
+    expect(notifications.createJob).not.toHaveBeenCalled();
+    expect(notifications.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reason: "library_notifications_disabled"
+      })
+    );
+  });
 });
 
 function createService(
@@ -195,7 +319,13 @@ function createNotifications() {
   };
 }
 
-function createPrisma({ groupId = null }: { groupId?: string | null } = {}) {
+function createPrisma({
+  groupId = null,
+  libraries = []
+}: {
+  groupId?: string | null;
+  libraries?: Array<{ plexKey: string; title: string; notificationIncluded: boolean }>;
+} = {}) {
   const events: Array<Record<string, unknown>> = [];
   return {
     appSetting: {
@@ -227,6 +357,9 @@ function createPrisma({ groupId = null }: { groupId?: string | null } = {}) {
             }
           : null
       )
+    },
+    monthlyRecapLibrary: {
+      findMany: vi.fn(async () => libraries)
     }
   };
 }

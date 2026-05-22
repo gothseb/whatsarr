@@ -101,6 +101,140 @@ describe("MonthlyRecapService", () => {
     );
   });
 
+  it("calculates the manual preview without creating a WhatsApp job", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          response: {
+            data: {
+              data: [
+                tautulliRow({ rating_key: "m1", title: "Dune", user: "seb" })
+              ]
+            }
+          }
+        })
+      }))
+    );
+
+    const prisma = createPrisma({
+      libraries: [{ plexKey: "1", title: "Films", included: true }],
+      group: { groupId: "group@g.us" }
+    });
+    const notifications = createNotifications();
+    const service = createService(prisma, notifications);
+
+    const status = await service.runMonthlyRecap("2026-05-01T08:00:00.000Z", true, false);
+
+    expect(status).toMatchObject({
+      month: "2026-05",
+      status: "calculated",
+      reason: "manual_preview",
+      jobId: null,
+      ranking: [
+        expect.objectContaining({
+          title: "Dune",
+          distinctUserCount: 1
+        })
+      ]
+    });
+    expect(notifications.createJob).not.toHaveBeenCalled();
+    expect(notifications.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "monthly_recap.calculated",
+        reason: "manual_preview"
+      })
+    );
+  });
+
+  it("asks Tautulli history per selected library section", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ response: { data: { data: [] } } })
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const prisma = createPrisma({
+      libraries: [
+        { plexKey: "1", title: "Films", included: true },
+        { plexKey: "4", title: "Series", included: true }
+      ]
+    });
+    const service = createService(prisma);
+
+    await service.runMonthlyRecap("2026-05-15T09:30:00.000Z", true, false);
+
+    const sectionIds = fetchMock.mock.calls.map((call) =>
+      new URL(String((call as unknown as [URL])[0])).searchParams.get("section_id")
+    );
+    expect(sectionIds).toEqual(["1", "4"]);
+  });
+
+  it("keeps the top five entries per selected library", async () => {
+    const rowsBySection: Record<string, Array<Record<string, unknown>>> = {
+      "1": Array.from({ length: 6 }, (_value, index) =>
+        tautulliRow({
+          rating_key: `m${index}`,
+          title: `Film ${index}`,
+          user: `user-${index}`,
+          section_id: "1",
+          library_name: "Films"
+        })
+      ),
+      "4": Array.from({ length: 6 }, (_value, index) =>
+        tautulliRow({
+          media_type: "episode",
+          rating_key: `e${index}`,
+          grandparent_rating_key: `s${index}`,
+          title: `Episode ${index}`,
+          grandparent_title: `Serie ${index}`,
+          user: `user-${index}`,
+          section_id: "4",
+          library_name: "Series"
+        })
+      )
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: URL) => {
+        const sectionId = new URL(String(url)).searchParams.get("section_id") ?? "1";
+        return {
+          ok: true,
+          json: async () => ({
+            response: {
+              data: {
+                data: rowsBySection[sectionId] ?? []
+              }
+            }
+          })
+        };
+      })
+    );
+
+    const prisma = createPrisma({
+      libraries: [
+        { plexKey: "1", title: "Films", included: true },
+        { plexKey: "4", title: "Series", included: true }
+      ]
+    });
+    const service = createService(prisma);
+
+    const status = await service.runMonthlyRecap("2026-05-15T09:30:00.000Z", true, false);
+
+    expect(status?.ranking).toHaveLength(10);
+    expect(status?.ranking.filter((entry) => entry.libraryKey === "1")).toHaveLength(5);
+    expect(status?.ranking.filter((entry) => entry.libraryKey === "4")).toHaveLength(5);
+    expect(status?.ranking[0]).toMatchObject({
+      title: "Film 0",
+      libraryTitle: "Films"
+    });
+    expect(status?.ranking[5]).toMatchObject({
+      title: "Serie 0",
+      libraryTitle: "Series"
+    });
+  });
+
   it("runs the scheduler only on the configured day and time", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 4, 2, 7, 30, 15));

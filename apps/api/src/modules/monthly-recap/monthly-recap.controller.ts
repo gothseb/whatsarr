@@ -19,7 +19,10 @@ export class MonthlyRecapController {
 
   @Put("libraries")
   updateLibraries(@Body() payload: UpdateMonthlyRecapLibrariesDto) {
-    return this.monthlyRecap.updateLibraries(payload.includedLibraryKeys);
+    return this.monthlyRecap.updateLibraries(
+      payload.includedLibraryKeys,
+      payload.notificationLibraryKeys
+    );
   }
 
   @Get("status")
@@ -39,6 +42,6 @@ export class MonthlyRecapController {
 
   @Post("run")
   run(@Body() payload: RunMonthlyRecapDto) {
-    return this.monthlyRecap.runMonthlyRecap(payload.referenceDate);
+    return this.monthlyRecap.runMonthlyRecap(payload.referenceDate, true, payload.send ?? false);
   }
 }

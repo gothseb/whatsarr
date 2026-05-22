@@ -216,11 +216,17 @@ export class PrismaService
         "title" TEXT NOT NULL,
         "type" TEXT,
         "included" BOOLEAN NOT NULL DEFAULT true,
+        "notification_included" BOOLEAN NOT NULL DEFAULT true,
         "last_synced_at" DATETIME NOT NULL,
         "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updated_at" DATETIME NOT NULL
       )
     `);
+
+    await this.$executeRawUnsafe(`
+      ALTER TABLE "monthly_recap_libraries"
+      ADD COLUMN "notification_included" BOOLEAN NOT NULL DEFAULT true
+    `).catch(() => undefined);
 
     await this.$executeRawUnsafe(`
       CREATE UNIQUE INDEX IF NOT EXISTS "monthly_recap_libraries_plex_key_key"

@@ -44,6 +44,38 @@ export class MediaAvailabilityDto {
 
   @IsString()
   @IsOptional()
+  libraryKey?: string;
+
+  @IsString()
+  @IsOptional()
+  libraryTitle?: string;
+
+  @IsString()
+  @IsOptional()
+  sectionId?: string;
+
+  @IsString()
+  @IsOptional()
+  sectionTitle?: string;
+
+  @IsString()
+  @IsOptional()
+  libraryName?: string;
+
+  @IsString()
+  @IsOptional()
+  section_id?: string;
+
+  @IsString()
+  @IsOptional()
+  section_title?: string;
+
+  @IsString()
+  @IsOptional()
+  library_name?: string;
+
+  @IsString()
+  @IsOptional()
   releaseDate?: string;
 
   @IsString()

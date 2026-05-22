@@ -124,14 +124,15 @@ model OperationalLog {
 }
 
 model MonthlyRecapLibrary {
-  id           String   @id @default(cuid())
-  plexKey      String   @unique @map("plex_key")
-  title        String
-  type         String?
-  included     Boolean  @default(true)
-  lastSyncedAt DateTime @map("last_synced_at")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(cuid())
+  plexKey              String   @unique @map("plex_key")
+  title                String
+  type                 String?
+  included             Boolean  @default(true)
+  notificationIncluded Boolean  @default(true) @map("notification_included")
+  lastSyncedAt         DateTime @map("last_synced_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   @@map("monthly_recap_libraries")
 }

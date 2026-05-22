@@ -14,6 +14,7 @@ const DEFAULT_MONTHLY_RECAP_TIME = "09:00";
 
 type RecapStatus =
   | "queued"
+  | "calculated"
   | "sent"
   | "failed"
   | "ignored"
@@ -34,6 +35,8 @@ interface RankingEntry {
   key: string;
   title: string;
   mediaType: "movie" | "series";
+  libraryKey: string;
+  libraryTitle: string;
   distinctUserCount: number;
   rawPlayCount: number;
 }
@@ -72,13 +75,14 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         plexKey: row.plexKey,
         title: row.title,
         type: row.type,
-        included: row.included,
+        recapIncluded: row.included,
+        notificationIncluded: row.notificationIncluded,
         lastSyncedAt: row.lastSyncedAt.toISOString()
       }))
     };
   }
 
-  async updateLibraries(includedLibraryKeys: string[]) {
+  async updateLibraries(includedLibraryKeys: string[], notificationLibraryKeys?: string[]) {
     const included = new Set(includedLibraryKeys);
     await this.prisma.monthlyRecapLibrary.updateMany({
       data: { included: false }
@@ -92,17 +96,43 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
           title: plexKey,
           type: null,
           included: true,
+          notificationIncluded: notificationLibraryKeys?.includes(plexKey) ?? true,
           lastSyncedAt: new Date()
         },
         update: { included: true }
       });
     }
 
+    if (notificationLibraryKeys) {
+      const notificationIncluded = new Set(notificationLibraryKeys);
+      await this.prisma.monthlyRecapLibrary.updateMany({
+        data: { notificationIncluded: false }
+      });
+
+      for (const plexKey of notificationIncluded) {
+        await this.prisma.monthlyRecapLibrary.upsert({
+          where: { plexKey },
+          create: {
+            plexKey,
+            title: plexKey,
+            type: null,
+            included: included.has(plexKey),
+            notificationIncluded: true,
+            lastSyncedAt: new Date()
+          },
+          update: { notificationIncluded: true }
+        });
+      }
+    }
+
     await this.notifications.log({
       level: "info",
       event: "monthly_recap.libraries_updated",
       message: `${included.size} bibliotheque(s) active(s) pour le recap mensuel.`,
-      context: { includedLibraryKeys: Array.from(included) }
+      context: {
+        includedLibraryKeys: Array.from(included),
+        notificationLibraryKeys
+      }
     });
 
     return this.listLibraries();
@@ -186,7 +216,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
     return this.runMonthlyRecap(now.toISOString());
   }
 
-  async runMonthlyRecap(referenceDate?: string) {
+  async runMonthlyRecap(referenceDate?: string, force = false, send = true) {
     const requestId = randomUUID();
     const reference = parseReferenceDate(referenceDate);
     const period = lastThirtyDays(reference);
@@ -194,7 +224,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
       where: { month: period.month }
     });
 
-    if (existing?.jobId || existing?.status === "sent" || existing?.status === "queued") {
+    if (!force && (existing?.jobId || existing?.status === "sent" || existing?.status === "queued")) {
       await this.notifications.log({
         level: "info",
         event: "monthly_recap.deduplicated",
@@ -224,7 +254,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
 
     let ranking: RankingEntry[];
     try {
-      const history = await this.fetchTautulliHistory(period.start, period.end);
+      const history = await this.fetchTautulliHistory(period.start, period.end, libraries);
       ranking = this.rankHistory(history, libraries);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Source de statistiques indisponible.";
@@ -248,6 +278,19 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         message: `Aucune vue a recapitulatif pour ${period.month}.`
       });
       await this.upsertRun(period.month, "empty", "no_views", [], requestId);
+      return this.getLatestStatus();
+    }
+
+    if (!send) {
+      await this.notifications.log({
+        level: "info",
+        event: "monthly_recap.calculated",
+        reason: "manual_preview",
+        requestId,
+        message: `Classement recap calcule pour ${period.month} sans envoi WhatsApp.`,
+        context: { month: period.month, entries: ranking.length }
+      });
+      await this.upsertRun(period.month, "calculated", "manual_preview", ranking, requestId, null);
       return this.getLatestStatus();
     }
 
@@ -326,6 +369,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
           title: library.title,
           type: library.type,
           included: true,
+          notificationIncluded: true,
           lastSyncedAt: now
         },
         update: {
@@ -337,35 +381,44 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async fetchTautulliHistory(start: Date, end: Date) {
+  private async fetchTautulliHistory(
+    start: Date,
+    end: Date,
+    libraries: Array<{ plexKey: string; title: string }>
+  ) {
     const settings = await this.settings.getDecryptedService("tautulli");
     if (!settings?.baseUrl || !settings.apiKey) {
       throw new BadRequestException("Tautulli n'est pas configure.");
     }
 
     const items: TautulliHistoryItem[] = [];
-    let startIndex = 0;
-    while (true) {
-      const url = new URL("/api/v2", settings.baseUrl);
-      url.searchParams.set("apikey", settings.apiKey);
-      url.searchParams.set("cmd", "get_history");
-      url.searchParams.set("after", formatDate(start));
-      url.searchParams.set("before", formatDate(end));
-      url.searchParams.set("start", String(startIndex));
-      url.searchParams.set("length", String(HISTORY_PAGE_SIZE));
+    for (const library of libraries) {
+      let startIndex = 0;
+      while (true) {
+        const url = new URL("/api/v2", settings.baseUrl);
+        url.searchParams.set("apikey", settings.apiKey);
+        url.searchParams.set("cmd", "get_history");
+        url.searchParams.set("after", formatDate(start));
+        url.searchParams.set("before", formatDate(end));
+        url.searchParams.set("section_id", library.plexKey);
+        url.searchParams.set("start", String(startIndex));
+        url.searchParams.set("length", String(HISTORY_PAGE_SIZE));
 
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new BadRequestException("Tautulli a refuse l'historique de visionnage.");
-      }
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new BadRequestException("Tautulli a refuse l'historique de visionnage.");
+        }
 
-      const body = (await response.json()) as Record<string, unknown>;
-      const page = readTautulliRows(body).map(normalizeHistoryItem);
-      items.push(...page);
-      if (page.length < HISTORY_PAGE_SIZE) {
-        break;
+        const body = (await response.json()) as Record<string, unknown>;
+        const page = readTautulliRows(body).map((row) =>
+          normalizeHistoryItem(row, library)
+        );
+        items.push(...page);
+        if (page.length < HISTORY_PAGE_SIZE) {
+          break;
+        }
+        startIndex += HISTORY_PAGE_SIZE;
       }
-      startIndex += HISTORY_PAGE_SIZE;
     }
 
     return items;
@@ -374,6 +427,10 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
   private rankHistory(history: TautulliHistoryItem[], libraries: Array<{ plexKey: string; title: string }>) {
     const libraryKeys = new Set(libraries.map((library) => library.plexKey));
     const libraryTitles = new Set(libraries.map((library) => library.title.toLowerCase()));
+    const libraryByKey = new Map(libraries.map((library) => [library.plexKey, library]));
+    const libraryByTitle = new Map(
+      libraries.map((library) => [library.title.toLowerCase(), library])
+    );
     const byContent = new Map<
       string,
       RankingEntry & { users: Set<string> }
@@ -390,8 +447,16 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         continue;
       }
 
+      const library =
+        (item.libraryKey ? libraryByKey.get(item.libraryKey) : undefined) ??
+        (item.libraryTitle ? libraryByTitle.get(item.libraryTitle.toLowerCase()) : undefined);
+      if (!library) {
+        continue;
+      }
+
       const mediaType = item.mediaType === "movie" ? "movie" : "series";
-      const key = mediaType === "series" ? item.grandparentRatingKey ?? item.ratingKey : item.ratingKey;
+      const mediaKey = mediaType === "series" ? item.grandparentRatingKey ?? item.ratingKey : item.ratingKey;
+      const key = `${library.plexKey}:${mediaKey}`;
       const title = mediaType === "series" ? item.grandparentTitle ?? item.title : item.title;
       const current =
         byContent.get(key) ??
@@ -399,6 +464,8 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
           key,
           title,
           mediaType,
+          libraryKey: library.plexKey,
+          libraryTitle: library.title,
           distinctUserCount: 0,
           rawPlayCount: 0,
           users: new Set<string>()
@@ -410,15 +477,18 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
       byContent.set(key, current);
     }
 
-    return Array.from(byContent.values())
-      .map(({ users: _users, ...entry }) => entry)
-      .sort(
-        (a, b) =>
-          b.distinctUserCount - a.distinctUserCount ||
-          b.rawPlayCount - a.rawPlayCount ||
-          a.title.localeCompare(b.title)
-      )
-      .slice(0, 20);
+    const byLibrary = new Map<string, RankingEntry[]>();
+    for (const { users: _users, ...entry } of byContent.values()) {
+      const entries = byLibrary.get(entry.libraryKey) ?? [];
+      entries.push(entry);
+      byLibrary.set(entry.libraryKey, entries);
+    }
+
+    return libraries.flatMap((library) =>
+      (byLibrary.get(library.plexKey) ?? [])
+        .sort(compareRankingEntries)
+        .slice(0, 5)
+    );
   }
 
   private async upsertRun(
@@ -427,7 +497,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
     reason: string | null,
     ranking: RankingEntry[],
     requestId: string,
-    jobId?: string
+    jobId?: string | null
   ) {
     return this.prisma.monthlyRecapRun.upsert({
       where: { month },
@@ -436,7 +506,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         status,
         reason,
         rankingJson: JSON.stringify(ranking),
-        jobId,
+        jobId: jobId ?? null,
         requestId,
         calculatedAt: new Date()
       },
@@ -444,7 +514,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         status,
         reason,
         rankingJson: JSON.stringify(ranking),
-        jobId,
+        jobId: jobId ?? null,
         requestId,
         calculatedAt: new Date()
       }
@@ -468,7 +538,10 @@ function readTautulliRows(body: Record<string, unknown>) {
   return readArray(data.data ?? data.history ?? response.data ?? body.data);
 }
 
-function normalizeHistoryItem(row: unknown): TautulliHistoryItem {
+function normalizeHistoryItem(
+  row: unknown,
+  library?: { plexKey: string; title: string }
+): TautulliHistoryItem {
   const item = readRecord(row);
   return {
     ratingKey: String(item.rating_key ?? item.ratingKey ?? ""),
@@ -477,8 +550,14 @@ function normalizeHistoryItem(row: unknown): TautulliHistoryItem {
     title: String(item.full_title ?? item.title ?? ""),
     grandparentTitle: readNullableString(item.grandparent_title ?? item.grandparentTitle),
     user: String(item.user ?? item.username ?? item.friendly_name ?? ""),
-    libraryKey: readNullableString(item.section_id ?? item.library_section_id ?? item.libraryKey),
-    libraryTitle: readNullableString(item.library_name ?? item.section_title ?? item.libraryTitle)
+    libraryKey:
+      readNullableString(item.section_id ?? item.library_section_id ?? item.libraryKey) ??
+      library?.plexKey ??
+      null,
+    libraryTitle:
+      readNullableString(item.library_name ?? item.section_title ?? item.libraryTitle) ??
+      library?.title ??
+      null
   };
 }
 
@@ -561,6 +640,14 @@ function formatTopSection(entries: RankingEntry[], emptyMessage: string) {
         `${index + 1} - ${entry.title}, vu par ${entry.distinctUserCount} ${pluralizeUsers(entry.distinctUserCount)}`
     )
     .join("\n");
+}
+
+function compareRankingEntries(a: RankingEntry, b: RankingEntry) {
+  return (
+    b.distinctUserCount - a.distinctUserCount ||
+    b.rawPlayCount - a.rawPlayCount ||
+    a.title.localeCompare(b.title)
+  );
 }
 
 function pluralizeUsers(count: number) {

@@ -87,7 +87,39 @@ export class MediaService {
       return { event: this.toPublicEvent(row), job: null };
     }
 
+    if (!(await this.isNotificationLibraryEnabled(routed))) {
+      await this.notifications.log({
+        level: "info",
+        event: "media.availability.ignored",
+        reason: "library_notifications_disabled",
+        requestId,
+        message: `Disponibilite ignoree pour les messages: ${enriched.title}`,
+        context: {
+          dedupeKey,
+          libraryKey: routed.libraryKey,
+          libraryTitle: routed.libraryTitle
+        }
+      });
+      return { event: this.toPublicEvent(row), job: null, requestJobs: [] };
+    }
+
     const requestJobs = await this.createRequestAvailableJobs(routed);
+    if (!shouldAnnounceToGroup(routed)) {
+      await this.notifications.log({
+        level: "info",
+        event: "announcement.skipped",
+        reason: "episode_followup",
+        requestId,
+        message: `Annonce groupe ignoree pour un episode suivant: ${enriched.title}`,
+        context: {
+          dedupeKey,
+          seasonNumber: routed.seasonNumber,
+          episodeNumber: routed.episodeNumber
+        }
+      });
+      return { event: this.toPublicEvent(row), job: null, requestJobs };
+    }
+
     const group = await this.prisma.whatsAppServerGroup.findUnique({
       where: { id: "server" }
     });
@@ -133,12 +165,26 @@ export class MediaService {
   }
 
   async notifyNewEpisode(input: MediaAvailabilityDto) {
+    if (!(await this.isNotificationLibraryEnabled(input))) {
+      await this.notifications.log({
+        level: "info",
+        event: "notification.skipped",
+        reason: "library_notifications_disabled",
+        message: `Notifications episode desactivees pour la bibliotheque: ${input.title}`,
+        context: {
+          libraryKey: input.libraryKey,
+          libraryTitle: input.libraryTitle
+        }
+      });
+      return { jobs: [] };
+    }
+
     const users = unique([
       ...(input.requesterPlexUserIds ?? []),
       ...(input.viewerPlexUserIds ?? [])
     ]);
 
-    if (input.mediaType === "episode" && (input.seasonNumber ?? 0) >= 2) {
+    if (input.mediaType === "episode" && input.episodeNumber === 1) {
       await this.routeAvailability({
         ...input,
         source: "plex",
@@ -151,6 +197,10 @@ export class MediaService {
   }
 
   private async createRequestAvailableJobs(input: MediaAvailabilityDto) {
+    if (!(await this.isNotificationLibraryEnabled(input))) {
+      return [];
+    }
+
     const users = unique(input.requesterPlexUserIds ?? []);
     if (users.length === 0) {
       return [];
@@ -213,6 +263,35 @@ export class MediaService {
     }
 
     return { jobs };
+  }
+
+  private async isNotificationLibraryEnabled(input: MediaAvailabilityDto) {
+    const libraryKey = (input.libraryKey ?? input.sectionId ?? input.section_id)?.trim();
+    const libraryTitle = (
+      input.libraryTitle ??
+      input.libraryName ??
+      input.sectionTitle ??
+      input.library_name ??
+      input.section_title
+    )?.trim().toLowerCase();
+    if (!libraryKey && !libraryTitle) {
+      return true;
+    }
+
+    const rows = await this.prisma.monthlyRecapLibrary.findMany({
+      orderBy: { title: "asc" }
+    });
+    if (rows.length === 0) {
+      return true;
+    }
+
+    const matching = rows.find((row) => {
+      const titleMatches = libraryTitle ? row.title.toLowerCase() === libraryTitle : false;
+      const keyMatches = libraryKey ? row.plexKey === libraryKey : false;
+      return keyMatches || titleMatches;
+    });
+
+    return matching ? matching.notificationIncluded : true;
   }
 
   private normalizeAvailability(input: MediaAvailabilityDto) {
@@ -398,4 +477,8 @@ function labelMediaType(value: string) {
     return "episode";
   }
   return "serie";
+}
+
+function shouldAnnounceToGroup(input: Pick<MediaAvailabilityDto, "mediaType" | "episodeNumber">) {
+  return input.mediaType !== "episode" || input.episodeNumber === 1;
 }

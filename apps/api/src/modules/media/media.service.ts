@@ -74,19 +74,6 @@ export class MediaService {
       }
     });
 
-    const recent = await this.isRecent(enriched.releaseDate ?? routed.releaseDate);
-    if (!recent) {
-      await this.notifications.log({
-        level: "info",
-        event: "media.availability.ignored",
-        reason: "not_recent",
-        requestId,
-        message: `Disponibilite ignoree car hors fenetre recente: ${enriched.title}`,
-        context: { dedupeKey }
-      });
-      return { event: this.toPublicEvent(row), job: null };
-    }
-
     if (!(await this.isNotificationLibraryEnabled(routed))) {
       await this.notifications.log({
         level: "info",
@@ -104,6 +91,19 @@ export class MediaService {
     }
 
     const requestJobs = await this.createRequestAvailableJobs(routed);
+    const recent = await this.isRecent(enriched.releaseDate ?? routed.releaseDate);
+    if (!recent) {
+      await this.notifications.log({
+        level: "info",
+        event: "announcement.skipped",
+        reason: "not_recent",
+        requestId,
+        message: `Annonce groupe ignoree car hors fenetre recente: ${enriched.title}`,
+        context: { dedupeKey }
+      });
+      return { event: this.toPublicEvent(row), job: null, requestJobs };
+    }
+
     if (!shouldAnnounceToGroup(routed)) {
       await this.notifications.log({
         level: "info",

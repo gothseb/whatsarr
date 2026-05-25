@@ -10,7 +10,7 @@ describe("MediaService", () => {
     await expect(service.getRecentWindow()).resolves.toEqual({ months: 6 });
   });
 
-  it("logs not_recent and creates no announcement for old releases", async () => {
+  it("logs not_recent and creates no group announcement for old releases", async () => {
     const prisma = createPrisma();
     const notifications = createNotifications();
     const service = createService(prisma, notifications);
@@ -26,7 +26,45 @@ describe("MediaService", () => {
     expect(notifications.createJob).not.toHaveBeenCalled();
     expect(notifications.log).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: "media.availability.ignored",
+        event: "announcement.skipped",
+        reason: "not_recent"
+      })
+    );
+  });
+
+  it("notifies requesters for old releases without group announcements", async () => {
+    const notifications = createNotifications();
+    const mapping = {
+      resolveRecipients: vi.fn(async () => [
+        { whatsappId: "336@g.us", displayName: "Camille" }
+      ])
+    };
+    const service = createService(
+      createPrisma({ groupId: "server-group@g.us" }),
+      notifications,
+      mapping
+    );
+
+    const result = await service.routeAvailability({
+      source: "overseerr",
+      mediaType: "movie",
+      title: "Ancien film demande",
+      releaseDate: "2020-01-01",
+      requesterPlexUserIds: ["alice"]
+    });
+
+    expect(result.job).toBeNull();
+    expect(result.requestJobs).toHaveLength(1);
+    expect(notifications.createJob).toHaveBeenCalledTimes(1);
+    expect(notifications.createJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "request_available",
+        targetId: "336@g.us"
+      })
+    );
+    expect(notifications.log).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "announcement.skipped",
         reason: "not_recent"
       })
     );

@@ -9,4 +9,5 @@ data
 _bmad
 _bmad-output
 .agents
-docs
+docs/*
+!docs/hermes-agent.md

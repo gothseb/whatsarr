@@ -28,6 +28,13 @@ export interface WhatsAppGroupMember {
   displayName: string;
 }
 
+export interface WhatsAppMedia {
+  mimetype: string;
+  data: Buffer;
+  filename: string;
+  filesize: number;
+}
+
 export interface WhatsAppAdapter {
   readonly status$: Observable<WhatsAppAdapterStatus>;
   getStatus(): WhatsAppAdapterStatus;
@@ -37,6 +44,7 @@ export interface WhatsAppAdapter {
   listGroups(): Promise<WhatsAppGroup[]>;
   listGroupMembers(groupId: string): Promise<WhatsAppGroupMember[]>;
   sendMessage(targetId: string, body: string, mediaUrl?: string | null): Promise<void>;
+  sendMedia(targetId: string, caption: string, media: WhatsAppMedia): Promise<void>;
   disconnect(): Promise<void>;
 }
 

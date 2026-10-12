@@ -4,9 +4,11 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
+import { configureAgentHttp } from "./modules/agent/agent-exception.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  configureAgentHttp(app);
   const allowedOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 
   app.setGlobalPrefix("api");

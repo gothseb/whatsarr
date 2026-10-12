@@ -387,7 +387,7 @@ export class MediaService {
     url.searchParams.set("api_key", apiKey);
     url.searchParams.set("language", "fr-FR");
     url.searchParams.set("query", input.title);
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!response.ok) {
       throw new Error("TMDB a refuse la recherche.");
     }
@@ -397,7 +397,7 @@ export class MediaService {
   }
 
   private async readTmdbDetails(url: URL, type: "movie" | "tv", tmdbId?: string) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!response.ok) {
       throw new Error("TMDB a refuse l'enrichissement.");
     }

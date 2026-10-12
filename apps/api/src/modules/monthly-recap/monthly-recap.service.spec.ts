@@ -235,6 +235,52 @@ describe("MonthlyRecapService", () => {
     });
   });
 
+  it("sorts the movie top across libraries by distinct viewers", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: URL) => {
+      const section = url.searchParams.get("section_id")!;
+      const users = section === "1" ? ["alice"] : ["alice", "bob"];
+      return { ok: true, json: async () => ({ response: { data: { data:
+        users.map((user) => tautulliRow({
+          rating_key: `movie-${section}`, title: `Film ${section}`, user,
+          section_id: section
+        }))
+      } } }) };
+    }));
+    const notifications = createNotifications();
+    const service = createService(createPrisma({
+      libraries: [
+        { plexKey: "1", title: "Films", included: true },
+        { plexKey: "2", title: "Films 4K", included: true }
+      ],
+      group: { groupId: "group@g.us" }
+    }), notifications);
+
+    await service.runMonthlyRecap("2026-05-15T09:30:00.000Z");
+
+    expect(notifications.createJob).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ variables: expect.objectContaining({
+        topMovies: "1 - Film 2, vu par 2 utilisateurs\n2 - Film 1, vu par 1 utilisateur"
+      }) })
+    }));
+  });
+
+  it("prevents overlapping scheduler runs and releases the lock after failure", async () => {
+    const service = createService(createPrisma({ libraries: [] }));
+    let rejectSchedule!: (reason: Error) => void;
+    const getSchedule = vi.spyOn(service, "getSchedule").mockImplementationOnce(() =>
+      new Promise((_resolve, reject) => { rejectSchedule = reject; })
+    );
+    const running = service.runScheduler();
+    const assertion = expect(running).rejects.toThrow("Database unavailable");
+
+    await expect(service.runScheduler()).resolves.toBeNull();
+    expect(getSchedule).toHaveBeenCalledOnce();
+    rejectSchedule(new Error("Database unavailable"));
+    await assertion;
+    await service.runScheduler();
+    expect(getSchedule).toHaveBeenCalledTimes(2);
+  });
+
   it("runs the scheduler only on the configured day and time", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 4, 2, 7, 30, 15));

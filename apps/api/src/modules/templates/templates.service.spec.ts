@@ -33,7 +33,29 @@ describe("TemplatesService", () => {
       "new_episode",
       "monthly_recap"
     ]);
-    expect(prisma.messageTemplate.create).toHaveBeenCalledTimes(4);
+    expect(prisma.messageTemplate.upsert).toHaveBeenCalledTimes(4);
+  });
+
+  it("renders the default without initializing templates for every message", async () => {
+    const prisma = createPrisma();
+    const service = new TemplatesService(prisma as never);
+
+    const rendered = await service.render("announcement", { title: "Dune" });
+
+    expect(rendered).toContain("Dune");
+    expect(prisma.messageTemplate.findMany).not.toHaveBeenCalled();
+    expect(prisma.messageTemplate.upsert).not.toHaveBeenCalled();
+  });
+
+  it("preserves a custom template when default initialization overlaps", async () => {
+    const prisma = createPrisma();
+    const service = new TemplatesService(prisma as never);
+    prisma.messageTemplate.findMany.mockResolvedValueOnce([]);
+    await service.updateTemplate("announcement", "Personnalise: {{title}}");
+
+    await service.listTemplates();
+
+    await expect(service.render("announcement", { title: "Dune" })).resolves.toBe("Personnalise: Dune");
   });
 });
 

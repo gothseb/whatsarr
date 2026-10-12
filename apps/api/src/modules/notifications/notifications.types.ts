@@ -4,6 +4,7 @@ export type NotificationJobType =
   | "announcement"
   | "request_available"
   | "new_episode"
+  | "agent_message"
   | "monthly_recap";
 
 export type NotificationTargetType = "group" | "contact";
@@ -12,6 +13,14 @@ export interface NotificationPayload {
   templateType: TemplateType;
   variables: Record<string, unknown>;
   mediaUrl?: string | null;
+}
+
+export interface AgentNotificationPayload {
+  kind: "agent_message";
+  source: "hermes";
+  messageId: string;
+  text: string;
+  mediaUrl: string | null;
 }
 
 export interface CreateNotificationJobInput {

@@ -58,3 +58,34 @@ describe("WhatsApp Web serialized identifier compatibility", () => {
     expect(result.lastMessage).toBeNull();
   });
 });
+
+describe("WhatsApp outgoing media identifier compatibility", () => {
+  function buildMessage(mediaOptions: Record<string, unknown>) {
+    const start = source.indexOf("        const message = {");
+    const end = source.indexOf("        // Bot's won't reply", start);
+    const context: Record<string, unknown> = {
+      options: {}, newMsgKey: { _serialized: "outgoing-id" }, content: "Caption",
+      from: "sender", chat: { id: "group@g.us" }, mediaOptions
+    };
+    for (const key of ["ephemeralFields", "quotedMsgOptions", "locationOptions", "pollOptions", "eventOptions", "vcardOptions", "buttonOptions", "listOptions", "botOptions", "extraOptions"]) context[key] = {};
+    return runInNewContext(source.slice(start, end) + "\nmessage;", context);
+  }
+  it("removes the media private id while preserving upload data and the message key", () => {
+    const media = { __x_id: undefined, mediaHandle: "upload", clientUrl: "blob:photo", caption: "Caption", toJSON: () => ({ type: "image", mimetype: "image/jpeg" }) };
+    const message = buildMessage(media);
+    // WhatsApp's Msg model prioritizes the private __x_id even when it is undefined.
+    const resolvedId = Object.hasOwn(message, "__x_id") ? message.__x_id : message.id;
+    expect(resolvedId._serialized).toBe("outgoing-id");
+    expect(message.mediaHandle).toBe("upload");
+    expect(message.clientUrl).toBe("blob:photo");
+    expect(message.type).toBe("image");
+    expect(Object.hasOwn(media, "__x_id")).toBe(true);
+  });
+  it("preserves ordinary text messages", () => {
+    const message = buildMessage({});
+    expect(message.id._serialized).toBe("outgoing-id");
+    expect(message.body).toBe("Caption");
+    expect(message.type).toBe("chat");
+    expect(Object.hasOwn(message, "__x_id")).toBe(false);
+  });
+});

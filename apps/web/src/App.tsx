@@ -1,3 +1,5 @@
+import { HermesPage } from "./HermesPage";
+import { MessageIdentity, LogCorrelation } from "./components/MessageIdentity";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -94,7 +96,7 @@ const WHATSAPP_STATE_LABELS: Record<PublicWhatsAppStatus["state"], string> = {
   failed: "Erreur"
 };
 
-type View = "dashboard" | "settings" | "whatsapp" | "mapping" | "templates" | "messages";
+type View = "dashboard" | "settings" | "whatsapp" | "mapping" | "templates" | "messages" | "hermes";
 
 export function App() {
   const [auth, setAuth] = useState({
@@ -210,6 +212,10 @@ export function App() {
             <ListChecks size={18} />
             Messages
           </button>
+          <button className={`nav-item ${view === "hermes" ? "active" : ""}`} type="button" onClick={() => setView("hermes")}>
+            <Server size={18} />
+            Hermes
+          </button>
         </nav>
       </aside>
 
@@ -251,6 +257,8 @@ export function App() {
           <MappingPage />
         ) : view === "templates" ? (
           <TemplatesPage />
+        ) : view === "hermes" ? (
+          <HermesPage />
         ) : (
           <MessagesPage />
         )}
@@ -260,6 +268,7 @@ export function App() {
 }
 
 function viewTitle(view: View) {
+  if (view === "hermes") return "Agent Hermes";
   if (view === "dashboard") {
     return "Dashboard";
   }
@@ -279,6 +288,7 @@ function viewTitle(view: View) {
 }
 
 function viewDescription(view: View) {
+  if (view === "hermes") return "Adresses et documentation pour connecter ton agent";
   if (view === "dashboard") {
     return "Statuts live, recap mensuel et integrations";
   }
@@ -952,10 +962,7 @@ function MessagesPage() {
             {jobs.map((job) => (
               <div className="job-row" key={job.id}>
                 <span>
-                  <strong>{job.type}</strong>
-                  <small>
-                    {job.targetType} - {job.targetId}
-                  </small>
+                  <MessageIdentity job={job} />
                 </span>
                 <em className={`job-status ${job.status}`}>{job.status}</em>
                 <small>{new Date(job.updatedAt).toLocaleString()}</small>
@@ -988,6 +995,7 @@ function MessagesPage() {
                 <span>{log.reason ?? log.level}</span>
                 <p>{log.message}</p>
                 <small>{log.requestId ?? "Sans requestId"}</small>
+                <LogCorrelation context={log.context} />
               </div>
             ))}
           </div>

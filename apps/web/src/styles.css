@@ -897,3 +897,20 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+/* Long Hermes identifiers stay readable within message rows. */
+.job-row small, .log-row small { overflow-wrap: anywhere; }
+
+.hermes-layout { display: grid; gap: 18px; max-width: 1000px; }
+.hermes-address { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 20px 0; }
+.hermes-address label { flex: 1 1 300px; display: grid; gap: 8px; }
+.hermes-address input { width: 100%; min-width: 0; padding: 12px; border: 1px solid #d9e2ec; border-radius: 8px; font-family: monospace; }
+.hermes-address [role="status"] { flex-basis: 100%; font-size: .9rem; }
+.hermes-layout a { text-decoration: none; padding: 10px 16px; }
+.hermes-layout li { margin-bottom: 8px; }
+.hermes-doc { max-width: 980px; margin: auto; padding: 32px 24px 64px; line-height: 1.7; overflow-wrap: anywhere; }
+.hermes-doc nav { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 16px; background: #fff; border-radius: 8px; }
+.hermes-doc h2 { margin-top: 40px; scroll-margin-top: 20px; }
+.hermes-doc pre { overflow-x: auto; padding: 18px; border-radius: 8px; background: #17212b; color: #f6f8fb; line-height: 1.5; }
+.hermes-doc p code { background: #e6ebef; padding: 2px 5px; border-radius: 4px; }
+.hermes-doc a { color: #12633f; }

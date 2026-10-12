@@ -37,6 +37,7 @@ describe("OverseerrService", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       new URL("http://overseerr.test/api/v1/user?take=100&skip=0"),
       {
+        signal: expect.any(AbortSignal),
         headers: {
           Accept: "application/json",
           "X-Api-Key": "overseerr-key"
@@ -73,6 +74,33 @@ describe("OverseerrService", () => {
     const service = new OverseerrService(createSettings(null) as never);
 
     await expect(service.fetchUsers()).rejects.toThrow(BadRequestException);
+  });
+
+  it("uses the unfiltered page size to find the next page", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        results: Array.from({ length: 100 }, (_, id) => ({ id }))
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        results: [{ id: 101, plexUsername: "alice" }]
+      })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const users = await new OverseerrService(createSettings() as never).fetchUsers();
+
+    expect(users).toMatchObject([{ plexUserId: "overseerr:101" }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1][0].searchParams.get("skip")).toBe("100");
+  });
+
+  it("stops on an empty page even if the API reports more results", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+      pageInfo: { results: 100 }, results: []
+    })));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(new OverseerrService(createSettings() as never).fetchUsers()).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 });
 

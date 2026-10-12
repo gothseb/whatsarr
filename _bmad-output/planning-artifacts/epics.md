@@ -3,6 +3,22 @@ stepsCompleted: [1, 2, 3, 4]
 workflowType: "epics-and-stories"
 status: "complete"
 completedAt: "2026-05-19"
+hermesExtension:
+  plannedEpicNumber: 6
+  stepsCompleted: [1, 2, 3]
+  currentStep: "create-story-complete"
+  status: "review"
+  storyWorkflow: "bmad-create-story"
+  implementationWorkflow: "bmad-dev-story"
+  implementationStatus: "review"
+  storiesImplemented: ["6.1", "6.2", "6.3", "6.4", "6.5", "6.6"]
+  storyFilesCreated: 6
+  sprintStatusUpdated: true
+  updatedAt: "2026-10-12"
+  sourceSelectionConfirmed: true
+  requirementsConfirmed: true
+  epicConfirmed: true
+  requirementSource: "Echange avec Seb dans ce chat : integration Hermes locale sans cle"
 inputDocuments:
   - "_bmad-output/planning-artifacts/prds/prd-whatsarr-2026-05-19/prd.md"
   - "_bmad-output/planning-artifacts/architecture.md"
@@ -13,6 +29,8 @@ inputDocuments:
 ## Overview
 
 This document provides the complete epic and story breakdown for whatsarr, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+
+Extension Hermes du 2026-10-12 : les epics 1 a 5 et leur decoupage sont conserves. L'epic 6 et les exigences FR21 a FR28 ont ete valides par Seb dans ce chat. Les stories 6.1 a 6.6 disposent de fichiers detailles dans `_bmad-output/implementation-artifacts`, prepares selon BMAD Create Story, puis implementes dans l’ordre avec BMAD Dev Story. Les six stories sont referencees dans `sprint-status.yaml` avec le statut `review` et leurs taches cochees. Le statut `complete` en tete concerne le decoupage initial ; `hermesExtension` suit separement cette extension.
 
 ## Requirements Inventory
 
@@ -58,6 +76,24 @@ FR19: L'Administrateur peut consulter les derniers envois, evenements ignores et
 
 FR20: Whatsarr conserve assez d'etat pour eviter de renvoyer plusieurs fois le meme message automatique; cela couvre annonces groupe, demandes disponibles et recaps mensuels.
 
+#### Extension Hermes — exigences validees
+
+FR21: Hermes peut appeler une API REST JSON locale de Whatsarr sans cle API, token, signature ni cookie de session administrateur. Ce choix explicite de Seb s'applique aux routes dediees a l'agent, y compris si l'authentification administrateur est activee pour l'interface. Les autres routes conservent leur politique d'acces.
+
+FR22: Hermes peut soumettre un texte avec une photo facultative pour publication dans le Groupe serveur WhatsApp deja configure. Le texte fourni par Hermes est conserve ; une photo accompagne le texte en legende. Le groupe cible est resolu cote Whatsarr, sans nouvelle configuration dans Hermes. Un groupe absent ou un payload invalide produit une erreur explicite sans creation de message.
+
+FR23: Chaque message Hermes accepte est persiste dans l'outbox `notification_jobs`, puis envoye via le worker et `WhatsAppAdapter` existants. L'API retourne un identifiant de job et un statut de mise en attente, sans presenter l'acceptation comme un envoi deja effectue. Les echecs d'envoi utilisent les statuts et retries existants.
+
+FR24: Hermes fournit un identifiant stable par message pour eviter les doublons lors des repetitions d'une requete. Une repetition identique retrouve le meme job, y compris apres redemarrage et lors de requetes concurrentes. La reutilisation du meme identifiant avec un contenu different est signalee comme conflit et ne modifie pas le message initial.
+
+FR25: Hermes peut rechercher des films et series presents sur Plex a partir d'une requete textuelle, avec filtrage optionnel par bibliotheque/type et pagination bornee. Les resultats normalises contiennent les identifiants de contenu et bibliotheque, titre, type et metadonnees utiles disponibles, sans credentiels Plex. Une recherche sans correspondance retourne une liste vide.
+
+FR26: Hermes peut consulter les derniers ajouts Plex, tries par date d'ajout decroissante, avec pagination et filtrage optionnel par bibliotheque/type. La reponse distingue la date d'ajout de la date de sortie et permet a l'agent de preparer des news et conseils depuis les contenus disponibles.
+
+FR27: Hermes peut consulter les derniers visionnages depuis Tautulli en lecture seule, avec pagination, periode et filtre utilisateur optionnels. Les donnees disponibles incluent utilisateur, titre, type, horodatage et, pour un episode, serie/saison/episode. Une absence de visionnage retourne une liste vide ; un service non configure, inaccessible ou refusant l'authentification retourne une erreur explicite. Aucun historique n'est invente pour masquer un echec.
+
+FR28: Hermes peut consulter le statut d'un message qu'il a soumis a partir de son identifiant de job. L'administrateur peut retrouver ces envois, echecs et doublons evites dans les logs/statuts existants avec source Hermes et identifiant de correlation. Les reponses et logs ne divulguent pas les secrets des integrations.
+
 ### NonFunctional Requirements
 
 NFR1: Fiabilite - Les redemarrages Docker ne doivent pas effacer la configuration, les mappings, l'historique anti-doublon ou la session WhatsApp lorsque celle-ci reste valide.
@@ -73,6 +109,12 @@ NFR5: Degradation - Quand un service secondaire est indisponible, Whatsarr doit 
 NFR6: Maintenabilite - Les integrations externes doivent etre separees du moteur metier pour faciliter les changements, notamment WhatsApp derriere `WhatsAppAdapter`.
 
 NFR7: Coherence d'implementation - Les agents doivent respecter snake_case en base, camelCase en API/UI, REST JSON, events dot.case, jobs persistants et logique metier cote backend.
+
+NFR8: Simplicite d'integration Hermes - L'agent utilise seulement l'URL locale de Whatsarr et les contrats documentes ; les identifiants des services restent geres par Whatsarr. Aucune cle Hermes, session de connexion, infrastructure d'authentification ou ouverture vers Internet n'est necessaire pour cette extension.
+
+NFR9: Appels bornes - Les lectures Plex/Tautulli et le traitement des photos ont des limites explicites de taille, pagination et duree. Les appels externes ne peuvent pas bloquer indefiniment le worker ou l'API ; les timeouts et erreurs de source sont normalises et observables.
+
+NFR10: Compatibilite - L'extension conserve les annonces, templates, mappings et recaps existants. Elle reutilise la session WhatsApp, le Groupe serveur, le stockage de secrets et l'outbox existants, sans creer une seconde file d'envoi.
 
 ### Additional Requirements
 
@@ -98,6 +140,18 @@ NFR7: Coherence d'implementation - Les agents doivent respecter snake_case en ba
 - Produire des logs operationnels sans secrets, avec niveaux `debug`, `info`, `warn`, `error` et `requestId` dans les erreurs API.
 - Premier travail d'implementation: initialiser monorepo, API, UI, Docker Compose, Prisma SQLite et volume `/data`.
 
+#### Contraintes additionnelles de l'extension Hermes
+
+- Sources confirmees par Seb : PRD existant, architecture existante et decisions de ce chat. La nouvelle fonctionnalite n'est pas encore decrite dans le PRD historique FR1 a FR20 ; FR21 a FR28 constituent l'extension produit validee.
+- Exception explicite a l'authentification generale de l'architecture : les seules routes agent sont accessibles sans cle ni cookie, selon la demande de Seb. Les secrets Plex/Tautulli restent utilises et dechiffres uniquement cote backend.
+- L'API agent appartient a un module backend dedie qui orchestre les services existants. Les controllers ne contactent pas directement WhatsApp et ne renvoient pas de modeles Prisma bruts.
+- Les lectures agent exposent des operations metier Plex/Tautulli definies ; elles ne proposent pas un proxy HTTP generique, des commandes arbitraires ou un acces aux reglages/secrets.
+- Les news, recommandations et leur planification sont produites par Hermes. Whatsarr fournit les donnees et transporte le contenu fourni, sans moteur IA ni planificateur editorial supplementaire.
+- Le perimetre V1 de consultation porte sur Plex et Tautulli. Les operations d'ecriture sur Plex/Tautulli, les demandes Overseerr et les mutations Radarr/Sonarr ne sont pas incluses dans cette demande.
+- Le mode de transmission de la photo, les limites precises des payloads et les contrats de pagination seront fixes pendant la conception et la redaction des stories. Hypothese V1 a examiner : URL HTTP(S) d'image joignable depuis le conteneur Whatsarr, y compris sur le reseau local.
+- L'identifiant fourni par Hermes pour l'anti-doublon est distinct du `requestId` technique de correlation et ne constitue pas une cle d'authentification.
+- Toute route agent doit etre documentee avec schemas, exemples, erreurs et comportement asynchrone, conformement a l'exigence OpenAPI de l'architecture.
+
 ### UX Design Requirements
 
 Aucun document UX separe n'a ete fourni. Les exigences UI extraites du PRD et de l'architecture sont:
@@ -115,6 +169,8 @@ UX-DR5: Page Templates permettant d'editer les templates, voir les variables dis
 UX-DR6: Page Logs affichant derniers envois, evenements ignores, erreurs et doublons evites avec statut, cible, horodatage et cause.
 
 UX-DR7: Etats live via SSE pour connexion WhatsApp, QR code, etat des integrations et messages/logs recents.
+
+UX-DR8: Les messages Hermes doivent etre reconnaissables dans les listes de jobs et logs existantes avec leur source, leur statut et leur erreur eventuelle. Aucun nouvel ecran de gestion de cle Hermes n'est requis.
 
 ### FR Coverage Map
 
@@ -138,6 +194,14 @@ FR17: Epic 5 - Calcul des contenus les plus vus
 FR18: Epic 5 - Envoi automatique du recap mensuel
 FR19: Epic 5 - Consultation des logs, erreurs et evenements ignores
 FR20: Epic 4 - Anti-doublon des messages automatiques
+FR21: Epic 6 - Acces Hermes local sans cle ni session administrateur
+FR22: Epic 6 - Publication de texte avec photo facultative dans le Groupe serveur
+FR23: Epic 6 - Envoi asynchrone via l'outbox persistante et le worker existants
+FR24: Epic 6 - Anti-doublon persistant et conflits d'identifiant de message
+FR25: Epic 6 - Recherche de films et series disponibles sur Plex
+FR26: Epic 6 - Consultation des derniers ajouts Plex
+FR27: Epic 6 - Consultation des derniers visionnages Tautulli
+FR28: Epic 6 - Consultation du statut d'envoi et tracabilite des messages Hermes
 
 ## Epic List
 
@@ -160,6 +224,20 @@ L'administrateur peut personnaliser les templates et Whatsarr peut envoyer autom
 ### Epic 5: Suivre l'activite et envoyer le recap mensuel
 L'administrateur peut choisir les bibliotheques Plex a inclure, Whatsarr calcule le classement mensuel films + series par utilisateurs distincts, envoie le recap automatiquement et expose les logs/statuts operationnels.
 **FRs covered:** FR16, FR17, FR18, FR19
+
+### Epic 6: Permettre a Hermes de consulter les medias et publier dans le groupe WhatsApp
+L'administrateur peut confier a Hermes la preparation de news et conseils films : l'agent consulte les contenus Plex et les derniers visionnages Tautulli via Whatsarr, puis soumet un texte avec photo facultative au Groupe serveur. L'integration utilise une API locale sans cle ni session administrateur, les identifiants de services deja enregistres, et les mecanismes persistants d'envoi, anti-doublon et suivi existants.
+**FRs covered:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28
+**Statut de conception:** epic valide ; les six stories sont implementees et pretes pour revue, avec suivi sprint mis a jour.
+**Contraintes couvertes:** NFR1, NFR2, NFR3, NFR5, NFR6, NFR7, NFR8, NFR9, NFR10 et UX-DR8.
+
+**Valeur livree et regroupement :** un seul parcours de bout en bout, depuis la consultation des medias jusqu'a la publication et au suivi WhatsApp. Les lectures et publications partagent la facade agent et les integrations existantes ; elles restent dans le meme epic, sans separer artificiellement les couches API, stockage et interface.
+
+**Dependances existantes :** configuration/secrets de l'epic 1 ; session WhatsApp et Groupe serveur de l'epic 2 ; outbox, worker et adapter des epics 2/4 ; integrations et observabilite utilisees par l'epic 5. Les mappings individuels de l'epic 3 ne sont pas requis pour publier dans le groupe. Aucun epic futur n'est necessaire au fonctionnement de l'epic 6.
+
+**Livraison incrementale :** les stories devront livrer des capacites utilisables, avec l'envoi texte complet puis la photo et le suivi, ainsi que des lectures Plex/Tautulli independantes les unes des autres. Chaque story integrera ses validations, erreurs, tests et contrat documente ; elle ne dependra pas d'une story ulterieure pour fonctionner.
+
+**Frontieres :** Hermes genere et planifie les contenus. Whatsarr assure les lectures en lecture seule, le transport du texte/photo et le suivi des envois. Les cles Hermes, la gestion de permissions agent, les mutations des services media et la selection de groupes arbitraires ne sont pas incluses.
 
 ## Epic 1: Installer Whatsarr et connecter les services media
 
@@ -1049,3 +1127,273 @@ So that je puisse diagnostiquer rapidement l'etat du systeme.
 **Given** un statut change cote backend
 **When** l'evenement SSE est envoye
 **Then** l'UI met a jour l'etat sans polling rapide.
+
+## Epic 6: Permettre a Hermes de consulter les medias et publier dans le groupe WhatsApp
+
+L'administrateur peut confier a Hermes la preparation de news et conseils films : l'agent consulte les contenus Plex et les derniers visionnages Tautulli via Whatsarr, puis soumet un texte avec photo facultative au Groupe serveur. L'API est locale, sans cle ni cookie, et reutilise la configuration ainsi que l'outbox existantes.
+
+**Statut :** epic valide ; les six stories ci-dessous et leurs choix de contrat sont proposes pour validation BMAD. Ce document contient le decoupage produit, pas des fichiers de contexte `ready-for-dev` ni une implementation.
+
+**Conventions communes :** prefixe `/api/agent`, JSON camelCase, dates ISO 8601 UTC, erreurs `{ error: { code, message, requestId } }`. Les routes agent ne portent pas `AuthGuard`, meme si `AUTH_DISABLED=false` ; les routes administrateur conservent leur protection. Chaque story documente ses propres schemas et exemples OpenAPI lors de son implementation, sans attendre une story de documentation ulterieure.
+
+**Choix V1 proposes :** photo transmise par `imageUrl` HTTP(S), joignable depuis Whatsarr, y compris sur le reseau local ; aucune transmission de fichier par multipart ou base64 en V1. Pagination `offset=0`, `limit=20` par defaut, maximum 100, entiers valides. Ces limites sont des choix applicatifs proposes, pas des limites affirmees des services externes.
+
+**Ordre et dependances :** 6.1 livre un envoi texte complet et deduplique. 6.2 ajoute la photo a 6.1. 6.3 ajoute le suivi a 6.1/6.2. Les lectures 6.4, 6.5 et 6.6 reutilisent la facade agent de 6.1 ; 6.5 peut partager le client/normaliseur Plex de 6.4. Les lectures restent utilisables sans session WhatsApp connectee. Aucune story ne depend d'une story ulterieure.
+
+### Story 6.1: Envoyer un texte Hermes au groupe WhatsApp sans cle et sans doublon
+
+**Requirements:** FR21, FR22 (texte), FR23, FR24, NFR1, NFR2, NFR3, NFR6, NFR7, NFR8, NFR10
+
+As a Administrateur utilisant Hermes,
+I want que mon agent soumette ses textes a Whatsarr sans connexion et sans doublon,
+So that ses news et conseils soient publies dans le groupe deja configure.
+
+**Acceptance Criteria:**
+
+**Given** un Groupe serveur est configure
+**When** Hermes appelle `POST /api/agent/messages` avec `{ messageId, text }` sans cle, token ou cookie
+**Then** Whatsarr cree un job persistant de type `agent_message` pour ce groupe et retourne HTTP 202 avec `{ jobId, messageId, status, deduplicated: false, requestId }`
+**And** le controller ne contacte pas directement WhatsApp, et le worker envoie le texte fourni via `WhatsAppAdapter`, sans template d'annonce ni filtre de nouveautes recentes.
+
+**Given** un message Hermes contient des retours a la ligne ou du texte `{{title}}`
+**When** le worker rend ce job
+**Then** le texte est conserve tel que fourni, sans interpolation de variables
+**And** les anciens payloads de notifications continuent de suivre leur rendu par template.
+
+**Given** le job existe deja pour le meme `messageId` et le meme contenu
+**When** Hermes repete la requete, y compris simultanement ou apres redemarrage
+**Then** l'API retourne le meme `jobId`, son statut actuel et `deduplicated: true`, sans nouveau job
+**And** HTTP 200 distingue cette repetition de la premiere acceptation HTTP 202 ; la contrainte d'unicite en base et le traitement des conflits concurrents garantissent ce comportement.
+
+**Given** un `messageId` existant est reutilise avec un texte different
+**When** Hermes soumet la requete
+**Then** l'API retourne HTTP 409 avec `AGENT_MESSAGE_ID_CONFLICT`
+**And** le job original, son contenu et sa cible restent inchanges ; l'identite du message est propre a la source Hermes, distincte du `requestId` technique.
+
+**Given** le Groupe serveur change apres la premiere acceptation
+**When** Hermes repete le meme message
+**Then** l'API retrouve le job original sans creer un envoi vers le nouveau groupe
+**And** seuls les nouveaux `messageId` utilisent le groupe courant ; les jobs acceptes conservent leur cible.
+
+**Given** `messageId` est absent, vide ou depasse 128 caracteres, ou `text` est absent, vide apres verification des espaces ou depasse 4000 caracteres
+**When** Hermes soumet le message, ou ajoute un champ de cible arbitraire
+**Then** l'API retourne HTTP 400 avec `AGENT_INVALID_REQUEST` sans creer de job
+**And** si aucun groupe n'est configure pour un nouveau message, elle retourne HTTP 409 avec `WHATSAPP_GROUP_NOT_SELECTED` ; la recherche d'un doublon deja accepte precede cette verification.
+
+**Given** WhatsApp est deconnecte apres acceptation ou l'envoi echoue
+**When** le worker traite le job
+**Then** le job suit les retries limites et statuts existants sans nouveau job
+**And** une erreur de journalisation apres un envoi reussi ne reprogramme pas l'envoi ; l'acceptation du webhook ne promet jamais un envoi deja realise.
+
+**Given** l'authentification administrateur est activee
+**When** les tests appellent cette route sans cookie, puis une route administrateur protegee
+**Then** la route agent fonctionne et la route administrateur reste protegee
+**And** les tests couvrent les repetitions concurrentes avec SQLite, le redemarrage, les conflits, les erreurs de validation et la preservation des notifications par template.
+
+### Story 6.2: Joindre une photo au message Hermes
+
+**Requirements:** FR21, FR22 (photo), FR23, FR24 (photo), NFR3, NFR5, NFR9, NFR10
+
+As a Administrateur utilisant Hermes,
+I want que mon agent accompagne ses conseils d'une photo,
+So that le groupe recoive une publication avec image et legende.
+
+**Acceptance Criteria:**
+
+**Given** la story 6.1 est disponible
+**When** Hermes soumet `{ messageId, text, imageUrl }` a `POST /api/agent/messages`
+**Then** le job conserve la reference image et le worker envoie une seule photo avec `text` comme legende
+**And** aucun second message texte n'est envoye pour la meme publication ; sans `imageUrl`, l'envoi texte seul continue de fonctionner.
+
+**Given** une image est hebergee sur une URL HTTP(S) joignable depuis le conteneur, y compris une adresse privee du reseau local
+**When** le worker la telecharge
+**Then** le telechargement ne necessite pas de cle Hermes ni de transmission des cles Plex/Tautulli a l'hote de l'image
+**And** `file:`, `data:`, les chemins locaux et les URL contenant des identifiants sont refuses ; les schemas des redirections sont egalement verifies.
+
+**Given** le texte accompagne une photo
+**When** sa longueur depasse la limite applicative proposee de 1000 caracteres ou l'URL est invalide
+**Then** la requete est refusee avec HTTP 400 `AGENT_INVALID_REQUEST` avant creation du job
+**And** les contrats documentent cette limite et la limite de 4000 caracteres pour le texte seul.
+
+**Given** la photo est telechargee par le worker
+**When** la reponse est une image JPEG ou PNG valide d'au plus 10 Mio et arrive dans un budget total de 15 secondes
+**Then** l'image peut etre transmise a l'adapter
+**And** la taille est controlee pendant la lecture, meme sans `Content-Length`, sans chargement non borne en memoire ; ces limites sont des choix V1 proposes.
+
+**Given** l'image est inaccessible, depasse les limites, contient autre chose qu'une image autorisee ou le telechargement expire
+**When** le worker traite le job
+**Then** une erreur explicite est enregistree et le job suit les retries limites existants
+**And** il n'envoie pas silencieusement le texte seul ; les ressources et fichiers temporaires sont liberes apres traitement, et les logs ne copient pas les parametres sensibles de l'URL.
+
+**Given** Hermes reutilise un `messageId` accepte avec une autre `imageUrl` ou avec ajout/suppression de la photo
+**When** la requete est traitee
+**Then** l'API retourne HTTP 409 `AGENT_MESSAGE_ID_CONFLICT` sans modifier le job
+**And** l'anti-doublon compare le texte et la reference image ; le guide precise qu'Hermes doit conserver l'image disponible et stable jusqu'a la fin de l'envoi.
+
+**Given** la fonctionnalite photo est implementee
+**When** les tests soumettent une image locale, un contenu non image, un flux trop volumineux, un timeout et des repetitions de requetes
+**Then** les comportements precedents sont verifies avec des sources et un adapter controles
+**And** les notifications existantes avec affiche conservent leur comportement.
+
+### Story 6.3: Consulter le statut des messages Hermes et les retrouver dans les logs
+
+**Requirements:** FR21, FR28, NFR2, NFR3, NFR5, UX-DR8
+
+As a Administrateur utilisant Hermes,
+I want suivre les messages soumis par mon agent,
+So that je sache s'ils sont en attente, envoyes ou en erreur.
+
+**Acceptance Criteria:**
+
+**Given** un job Hermes a ete accepte par la story 6.1 ou 6.2
+**When** Hermes appelle `GET /api/agent/messages/:jobId` sans cle ni cookie
+**Then** la reponse expose `{ jobId, messageId, source: "hermes", status, attempts, createdAt, sentAt, failedAt, lastError, requestId }`
+**And** les dates sont en ISO 8601 UTC, les champs non disponibles valent `null` et les statuts reprennent ceux du worker sans confondre `pending`, `processing`, `retry_scheduled`, `sent` et `failed`.
+
+**Given** un job est absent ou appartient a une notification d'une autre source
+**When** l'agent consulte son identifiant
+**Then** l'API retourne HTTP 404 avec `AGENT_MESSAGE_NOT_FOUND`
+**And** elle n'expose pas le payload brut, les secrets des services, les cookies ou les donnees de session WhatsApp.
+
+**Given** un message Hermes est accepte, deduplique, envoye ou echoue
+**When** l'administrateur consulte les listes existantes de jobs et logs
+**Then** la source Hermes et les statuts sont identifiables avec le `jobId`, le `messageId` et le `requestId` utiles a la correlation
+**And** les secrets et parametres sensibles d'URL sont masques, sans introduire un ecran de configuration de cle agent.
+
+**Given** le worker change le statut du job ou l'application redemarre
+**When** Hermes consulte a nouveau l'identifiant
+**Then** la reponse reflete l'etat persistant courant
+**And** les tests couvrent tous les statuts, les identifiants absents, les jobs non Hermes, le masquage et la compatibilite des listes existantes.
+
+### Story 6.4: Rechercher les films et series disponibles sur Plex
+
+**Requirements:** FR21, FR25, NFR3, NFR5, NFR6, NFR7, NFR8, NFR9
+
+As a Administrateur utilisant Hermes,
+I want que mon agent recherche les contenus disponibles sur mon serveur Plex,
+So that ses conseils portent sur des films et series que les membres peuvent regarder.
+
+**Acceptance Criteria:**
+
+**Given** Plex est configure dans Whatsarr
+**When** Hermes appelle `GET /api/agent/media/search?q=...` avec `libraryKey`, `mediaType=movie|series`, `offset` et `limit` facultatifs
+**Then** Whatsarr interroge Plex en lecture seule avec la configuration enregistree et renvoie `{ items, pagination: { offset, limit, hasMore }, source: "plex" }`
+**And** les resultats contiennent `ratingKey`, `libraryKey`, `title`, `mediaType`, ainsi que `year`, `summary`, `genres` et `addedAt` lorsque disponibles ; les valeurs absentes sont explicites et les resultats ne contiennent ni token ni URL Plex authentifiee.
+
+**Given** la requete est valide et aucun contenu ne correspond
+**When** Plex retourne une recherche vide
+**Then** l'API renvoie HTTP 200 avec `items: []` et `hasMore: false`
+**And** les resultats sont dedupliques par bibliotheque et identifiant Plex ; la pagination n'est pas calculee a partir d'une simple page filtree qui masquerait des correspondances suivantes.
+
+**Given** `q` est vide apres trim ou depasse 200 caracteres, un type est inconnu, ou la pagination contient un entier negatif, non entier ou un `limit` hors de 1 a 100
+**When** Hermes lance la recherche
+**Then** l'API retourne HTTP 400 `AGENT_INVALID_REQUEST`
+**And** une bibliotheque demandee absente retourne HTTP 404 `PLEX_LIBRARY_NOT_FOUND` ; aucune URL ou commande de service arbitraire n'est acceptee.
+
+**Given** Plex est non configure, refuse ses identifiants, devient inaccessible ou depasse le budget d'appel de 15 secondes
+**When** Hermes lance la recherche
+**Then** une erreur normalisee est retournee : HTTP 409 `PLEX_NOT_CONFIGURED`, HTTP 502 `PLEX_AUTHENTICATION_ERROR`, HTTP 502 `PLEX_UNREACHABLE` ou HTTP 504 `PLEX_TIMEOUT`
+**And** les messages et logs ne divulguent pas la cle Plex ; une panne n'est pas presentee comme une recherche vide.
+
+**Given** la recherche est implementee dans le client Plex et la facade agent
+**When** les tests verifient films, series, filtres, pagination, resultats vides et erreurs de source
+**Then** les contrats precedents sont verifies sans envoi WhatsApp ni modification des medias
+**And** l'import d'utilisateurs et de bibliotheques existant reste compatible ; OpenAPI fournit un exemple de recherche utilisable par Hermes.
+
+### Story 6.5: Consulter les derniers ajouts Plex pour preparer des news
+
+**Requirements:** FR21, FR26, NFR3, NFR5, NFR6, NFR8, NFR9
+
+As a Administrateur utilisant Hermes,
+I want que mon agent consulte les nouveautes ajoutees a Plex,
+So that il puisse preparer une selection recente pour le groupe.
+
+**Acceptance Criteria:**
+
+**Given** Plex est configure
+**When** Hermes appelle `GET /api/agent/media/recent` avec `libraryKey`, `mediaType=movie|series|episode`, `offset` et `limit` facultatifs
+**Then** Whatsarr retourne des contenus tries par date d'ajout decroissante avec un departage stable pour les dates egales
+**And** la reponse utilise l'enveloppe et les limites de pagination de 6.4 ; un episode indique aussi sa serie, sa saison et son numero lorsque disponibles.
+
+**Given** un ancien film vient d'etre ajoute ou plusieurs bibliotheques sont consultees
+**When** les dernieres disponibilites sont listees
+**Then** le tri utilise `addedAt`, distinct de la date de sortie `releaseDate`, et s'applique a l'ensemble des bibliotheques concernees avant pagination
+**And** l'API ne replique pas le filtre de sortie recente des annonces automatiques et ne cree aucun job WhatsApp.
+
+**Given** aucun ajout n'est disponible ou des metadonnees facultatives sont absentes
+**When** l'agent consulte les ajouts
+**Then** une liste vide ou des champs optionnels explicites sont retournes, sans donnee inventee
+**And** aucun token ni URL authentifiee de service ne figure dans les resultats.
+
+**Given** les filtres sont invalides, une bibliotheque demandee n'existe pas ou Plex est indisponible
+**When** Hermes appelle cette route
+**Then** les validations et erreurs normalisees de 6.4 s'appliquent
+**And** les tests couvrent le tri global, les dates egales, les pages suivantes, l'ancien contenu nouvellement ajoute, les episodes et la lecture seule ; la route possede son exemple OpenAPI.
+
+### Story 6.6: Consulter les derniers visionnages Tautulli
+
+**Requirements:** FR21, FR27, NFR3, NFR5, NFR6, NFR7, NFR8, NFR9, NFR10
+
+As a Administrateur utilisant Hermes,
+I want que mon agent voie les derniers visionnages du serveur,
+So that ses selections et conseils puissent tenir compte de l'activite reelle.
+
+**Acceptance Criteria:**
+
+**Given** Tautulli est configure dans Whatsarr
+**When** Hermes appelle `GET /api/agent/watch-history` avec `userId`, `from`, `to`, `offset` et `limit` facultatifs
+**Then** Whatsarr interroge Tautulli en lecture seule via les identifiants enregistres et renvoie `{ items, pagination: { offset, limit, hasMore }, source: "tautulli" }`, tries du visionnage le plus recent au plus ancien
+**And** sans periode explicite, la premiere page contient les derniers visionnages disponibles, sans restriction implicite au mois du recap.
+
+**Given** Tautulli fournit une lecture de film ou d'episode
+**When** Whatsarr normalise le resultat
+**Then** chaque entree contient les champs disponibles `userId`, `userName`, `title`, `mediaType`, `ratingKey`, `libraryKey`, `startedAt`, `stoppedAt`, `durationSeconds`, `progressPercent` et, pour un episode, `seriesTitle`, `seasonNumber`, `episodeNumber`
+**And** les champs absents valent `null`, les dates sont en UTC, et ni adresses IP, emails, cles API, URL authentifiees ou reponse brute Tautulli ne sont exposes ; le guide distingue historique de lecture et preuve de visionnage termine.
+
+**Given** les filtres utilisateur ou periode sont renseignes
+**When** les resultats sont recuperes
+**Then** les filtres sont appliques avant pagination, `from` est inclusif et `to` exclusif sur `startedAt`, et un utilisateur sans lecture retourne une liste vide
+**And** les parametres de dates exigent ISO 8601 avec timezone ; un intervalle inverse, une date invalide ou une pagination hors limites produit HTTP 400 `AGENT_INVALID_REQUEST`.
+
+**Given** l'historique est vide ou certaines lectures du meme utilisateur sont repetees
+**When** l'agent consulte la page
+**Then** une absence de lecture est renvoyee comme liste vide, et les lectures distinctes restent distinctes
+**And** `hasMore` reflete les resultats de source, sans utiliser le nombre de lignes restantes apres normalisation comme seul critere.
+
+**Given** Tautulli est non configure, refuse ses identifiants, retourne une erreur applicative meme avec HTTP 200, est inaccessible ou expire apres 15 secondes
+**When** Hermes consulte l'historique
+**Then** l'API retourne une erreur explicite avec HTTP 409 `TAUTULLI_NOT_CONFIGURED`, HTTP 502 `TAUTULLI_AUTHENTICATION_ERROR` ou `TAUTULLI_UNREACHABLE`, ou HTTP 504 `TAUTULLI_TIMEOUT`
+**And** aucune panne n'est remplacee par un historique vide ou un fallback invente ; les secrets sont masques.
+
+**Given** le client Tautulli est ajoute ou extrait du module de recap existant
+**When** les tests verifient films, episodes, champs absents, filtres, bornes de periode, pagination et erreurs
+**Then** les contrats precedents sont verifies et le calcul du recap existant reste compatible
+**And** OpenAPI et les exemples documentent la consultation sans cle, l'enchainement lecture -> redaction Hermes -> publication, et les limites V1 sans attribuer la generation de conseils a Whatsarr.
+
+### Couverture et revue des stories Hermes
+
+| Exigence | Stories preparees |
+| --- | --- |
+| FR21 — API sans cle | 6.1 a 6.6 |
+| FR22 — Texte et photo au groupe | 6.1, 6.2 |
+| FR23 — Outbox et envoi asynchrone | 6.1, 6.2 |
+| FR24 — Anti-doublon et conflits | 6.1, 6.2 |
+| FR25 — Recherche Plex | 6.4 |
+| FR26 — Derniers ajouts Plex | 6.5 |
+| FR27 — Derniers visionnages Tautulli | 6.6 |
+| FR28 — Statut et correlation | 6.3 |
+| UX-DR8 — Messages Hermes visibles dans l'existant | 6.3 |
+| NFR1/NFR10 — Persistance et compatibilite | 6.1, 6.2, 6.6 |
+| NFR2/NFR3 — Logs et confidentialite | 6.1 a 6.6 selon leurs criteres |
+| NFR5/NFR6/NFR7 — Erreurs, integrations et conventions | 6.1 a 6.6 selon leurs criteres |
+| NFR8 — Configuration simple | 6.1, 6.4, 6.5, 6.6 |
+| NFR9 — Appels et donnees bornes | 6.2, 6.4, 6.5, 6.6 |
+
+**Implementation BMAD terminee le 2026-10-12 :** les six stories detaillees ont ete executees dans l’ordre et sont `review`, avec leurs taches cochees. L’epic 6 reste `in-progress` dans le suivi BMAD jusqu’a la revue des stories. Les endpoints Hermes sont implementes ; 195 tests API, 3 tests UI, lint/build et smoke de l’application compilee passent. Les services reels n’ont pas ete contactes pour ces verifications. Les fichiers ci-dessous donnent les contrats precis, les taches ouvertes, les fichiers a modifier et les tests attendus. Les statuts des epics 1 a 5 sont conserves.
+
+- [Story 6.1: envoyer-un-texte-hermes-au-groupe-whatsapp](../implementation-artifacts/6-1-envoyer-un-texte-hermes-au-groupe-whatsapp.md)
+- [Story 6.2: joindre-une-photo-au-message-hermes](../implementation-artifacts/6-2-joindre-une-photo-au-message-hermes.md)
+- [Story 6.3: consulter-le-statut-des-messages-hermes](../implementation-artifacts/6-3-consulter-le-statut-des-messages-hermes.md)
+- [Story 6.4: rechercher-les-films-et-series-disponibles-sur-plex](../implementation-artifacts/6-4-rechercher-les-films-et-series-disponibles-sur-plex.md)
+- [Story 6.5: consulter-les-derniers-ajouts-plex](../implementation-artifacts/6-5-consulter-les-derniers-ajouts-plex.md)
+- [Story 6.6: consulter-les-derniers-visionnages-tautulli](../implementation-artifacts/6-6-consulter-les-derniers-visionnages-tautulli.md)

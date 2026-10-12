@@ -26,6 +26,7 @@ export class OverseerrService {
       let response: Response;
       try {
         response = await fetch(url, {
+          signal: AbortSignal.timeout(15_000),
           headers: {
             Accept: "application/json",
             "X-Api-Key": settings.apiKey
@@ -65,7 +66,8 @@ function readUsersPage(body: unknown, skip: number) {
     readNumber(pageInfo.results) ??
     readNumber(container.totalResults) ??
     readNumber(container.total);
-  const hasMore = total !== null ? skip + users.length < total : users.length === PAGE_SIZE;
+  const hasMore = results.length > 0 &&
+    (total !== null ? skip + results.length < total : results.length === PAGE_SIZE);
 
   return { users, hasMore };
 }

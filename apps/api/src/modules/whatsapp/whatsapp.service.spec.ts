@@ -58,6 +58,7 @@ function createAdapter(options: { hasLocalSession?: boolean } = {}): WhatsAppAda
     replaceSession: vi.fn(async () => disconnectedStatus),
     listGroups: vi.fn(async () => []),
     listGroupMembers: vi.fn(async () => []),
+    sendMedia: vi.fn(async () => {}),
     sendMessage: vi.fn(async () => undefined),
     disconnect: vi.fn(async () => undefined)
   };

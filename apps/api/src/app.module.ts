@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "node:path";
 import { AuthModule } from "./modules/auth/auth.module";
+import { AgentModule } from "./modules/agent/agent.module";
 import { DatabaseModule } from "./modules/database/database.module";
 import { HealthModule } from "./modules/health/health.module";
 import { MappingModule } from "./modules/mapping/mapping.module";
@@ -24,6 +25,7 @@ import { WhatsAppModule } from "./modules/whatsapp/whatsapp.module";
     DatabaseModule,
     HealthModule,
     AuthModule,
+    AgentModule,
     SettingsModule,
     WhatsAppModule,
     MappingModule,

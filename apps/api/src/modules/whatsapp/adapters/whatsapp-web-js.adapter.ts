@@ -8,7 +8,8 @@ import type {
   WhatsAppAdapter,
   WhatsAppAdapterStatus,
   WhatsAppGroup,
-  WhatsAppGroupMember
+  WhatsAppGroupMember,
+  WhatsAppMedia
 } from "../whatsapp.types";
 
 const CLIENT_ID = "whatsarr";
@@ -135,6 +136,12 @@ export class WhatsAppWebJsAdapter implements WhatsAppAdapter {
     }
 
     await client.sendMessage(targetId, body);
+  }
+
+  async sendMedia(targetId: string, caption: string, media: WhatsAppMedia) {
+    const client = this.requireConnectedClient();
+    const messageMedia = new MessageMedia(media.mimetype, media.data.toString("base64"), media.filename, media.filesize);
+    await client.sendMessage(targetId, messageMedia, { caption });
   }
 
   async disconnect() {

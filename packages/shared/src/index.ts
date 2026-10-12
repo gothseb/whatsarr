@@ -124,6 +124,8 @@ export interface PublicMessageTemplate {
 }
 
 export interface PublicNotificationJob {
+  source?: "hermes" | null;
+  messageId?: string | null;
   id: string;
   type: string;
   targetType: string;
@@ -139,6 +141,20 @@ export interface PublicNotificationJob {
   requestId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AgentJobStatus = "pending" | "processing" | "retry_scheduled" | "sent" | "failed";
+export interface AgentMessageStatus {
+  jobId: string;
+  messageId: string;
+  source: "hermes";
+  status: AgentJobStatus;
+  attempts: number;
+  createdAt: string;
+  sentAt: string | null;
+  failedAt: string | null;
+  lastError: string | null;
+  requestId: string | null;
 }
 
 export interface PublicOperationalLog {

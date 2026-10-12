@@ -1,11 +1,11 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
 import { NotificationsService } from "./notifications.service";
 
 @UseGuards(AuthGuard)
 @Controller("notifications")
 export class NotificationsController {
-  constructor(private readonly notifications: NotificationsService) {}
+  constructor(@Inject(NotificationsService) private readonly notifications: NotificationsService) {}
 
   @Get("jobs")
   listJobs(@Query("limit") limit?: string) {

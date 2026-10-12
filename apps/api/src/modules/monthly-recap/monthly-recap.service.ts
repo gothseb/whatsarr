@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { PrismaService } from "../database/prisma.service";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -43,7 +43,9 @@ interface RankingEntry {
 
 @Injectable()
 export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(MonthlyRecapService.name);
   private timer?: NodeJS.Timeout;
+  private isScheduling = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -54,9 +56,9 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit() {
     this.timer = setInterval(() => {
-      void this.runScheduler();
+      void this.runScheduler().catch((error) => this.logger.error(error));
     }, SCHEDULER_INTERVAL_MS);
-    void this.runScheduler();
+    void this.runScheduler().catch((error) => this.logger.error(error));
   }
 
   onModuleDestroy() {
@@ -202,6 +204,18 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
   }
 
   async runScheduler() {
+    if (this.isScheduling) {
+      return null;
+    }
+    this.isScheduling = true;
+    try {
+      return await this.runScheduledRecap();
+    } finally {
+      this.isScheduling = false;
+    }
+  }
+
+  private async runScheduledRecap() {
     const now = new Date();
     const schedule = await this.getSchedule();
     const [hour, minute] = schedule.time.split(":").map(Number);
@@ -310,8 +324,8 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
       return this.getLatestStatus();
     }
 
-    const movies = ranking.filter((entry) => entry.mediaType === "movie");
-    const series = ranking.filter((entry) => entry.mediaType === "series");
+    const movies = ranking.filter((entry) => entry.mediaType === "movie").sort(compareRankingEntries);
+    const series = ranking.filter((entry) => entry.mediaType === "series").sort(compareRankingEntries);
     const job = await this.notifications.createJob({
       type: "monthly_recap",
       targetType: "group",
@@ -404,7 +418,7 @@ export class MonthlyRecapService implements OnModuleInit, OnModuleDestroy {
         url.searchParams.set("start", String(startIndex));
         url.searchParams.set("length", String(HISTORY_PAGE_SIZE));
 
-        const response = await fetch(url);
+        const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
         if (!response.ok) {
           throw new BadRequestException("Tautulli a refuse l'historique de visionnage.");
         }

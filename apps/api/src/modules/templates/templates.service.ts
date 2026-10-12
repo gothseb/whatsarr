@@ -63,7 +63,7 @@ export class TemplatesService {
   }
 
   async render(type: TemplateType, variables: Record<string, unknown>) {
-    await this.ensureDefaults();
+    this.parseType(type);
     const row = await this.prisma.messageTemplate.findUnique({
       where: { templateType: type }
     });
@@ -87,11 +87,13 @@ export class TemplatesService {
 
     for (const type of TEMPLATE_TYPES) {
       if (!existingTypes.has(type)) {
-        await this.prisma.messageTemplate.create({
-          data: {
+        await this.prisma.messageTemplate.upsert({
+          where: { templateType: type },
+          create: {
             templateType: type,
             body: DEFAULT_TEMPLATES[type]
-          }
+          },
+          update: {}
         });
       }
     }

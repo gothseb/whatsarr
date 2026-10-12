@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { Observable, ReplaySubject } from "rxjs";
 import { NotificationsService } from "../notifications/notifications.service";
 import { SettingsService } from "../settings/settings.service";
@@ -13,6 +13,7 @@ const STATUS_INTERVAL_MS = 30_000;
 
 @Injectable()
 export class StatusService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(StatusService.name);
   private readonly events = new ReplaySubject<SseMessage>(1);
   private timer?: NodeJS.Timeout;
 
@@ -26,7 +27,7 @@ export class StatusService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     await this.publish();
     this.timer = setInterval(() => {
-      void this.publish();
+      void this.publish().catch((error) => this.logger.error(error));
     }, STATUS_INTERVAL_MS);
   }
 

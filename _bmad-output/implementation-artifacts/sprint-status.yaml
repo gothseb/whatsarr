@@ -1,9 +1,9 @@
 # generated: 2026-05-19T21:40:00+02:00
-# last_updated: 2026-05-20T00:00:00+02:00
+# last_updated: 2026-10-12T16:12:46+02:00
 # project: whatsarr
 # project_key: NOKEY
 # tracking_system: file-system
-# story_location: N:\windsurf\whatsarr\_bmad-output\implementation-artifacts
+# story_location: _bmad-output/implementation-artifacts
 
 # STATUS DEFINITIONS:
 # ==================
@@ -24,11 +24,11 @@
 #   - done: Retrospective has been completed
 
 generated: "2026-05-19T21:40:00+02:00"
-last_updated: "2026-05-20T15:35:00+02:00"
+last_updated: "2026-10-12T16:12:46+02:00"
 project: "whatsarr"
 project_key: "NOKEY"
 tracking_system: "file-system"
-story_location: 'N:\windsurf\whatsarr\_bmad-output\implementation-artifacts'
+story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
   epic-1: in-progress
@@ -76,3 +76,11 @@ development_status:
   5-6-centraliser-les-logs-operationnels: review
   5-7-exposer-les-statuts-live-de-l-application: review
   epic-5-retrospective: optional
+  epic-6: in-progress
+  6-1-envoyer-un-texte-hermes-au-groupe-whatsapp: review
+  6-2-joindre-une-photo-au-message-hermes: review
+  6-3-consulter-le-statut-des-messages-hermes: review
+  6-4-rechercher-les-films-et-series-disponibles-sur-plex: review
+  6-5-consulter-les-derniers-ajouts-plex: review
+  6-6-consulter-les-derniers-visionnages-tautulli: review
+  epic-6-retrospective: optional

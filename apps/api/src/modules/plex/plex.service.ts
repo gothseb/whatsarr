@@ -1,3 +1,6 @@
+import { AgentError } from "../agent/agent.types";
+import { AgentMediaQuery, AgentRecentQuery } from "../agent/agent-media.types";
+import { searchPlexCatalogue, recentPlexCatalogue } from "./plex-catalogue";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { SettingsService } from "../settings/settings.service";
 
@@ -17,6 +20,20 @@ export interface PlexLibrary {
 export class PlexService {
   constructor(private readonly settings: SettingsService) {}
 
+  async searchMedia(query: AgentMediaQuery) {
+    const settings = await this.settings.getDecryptedService("plex");
+    if (!settings?.baseUrl || !settings.apiKey) throw new AgentError(409,"PLEX_NOT_CONFIGURED","Plex n’est pas configure.");
+    try { new URL(settings.baseUrl); } catch { throw new AgentError(409,"PLEX_NOT_CONFIGURED","URL Plex invalide."); }
+    return searchPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query);
+  }
+
+  async recentMedia(query: AgentRecentQuery) {
+    const settings = await this.settings.getDecryptedService("plex");
+    if (!settings?.baseUrl || !settings.apiKey) throw new AgentError(409,"PLEX_NOT_CONFIGURED","Plex n’est pas configure.");
+    try { new URL(settings.baseUrl); } catch { throw new AgentError(409,"PLEX_NOT_CONFIGURED","URL Plex invalide."); }
+    return recentPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query);
+  }
+
   async fetchUsers(): Promise<ImportedPlexUser[]> {
     const settings = await this.settings.getDecryptedService("plex");
 
@@ -30,6 +47,7 @@ export class PlexService {
     let response: Response;
     try {
       response = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
         headers: { Accept: "application/json" }
       });
     } catch {
@@ -57,6 +75,7 @@ export class PlexService {
     let response: Response;
     try {
       response = await fetch(url, {
+        signal: AbortSignal.timeout(15_000),
         headers: { Accept: "application/json" }
       });
     } catch {

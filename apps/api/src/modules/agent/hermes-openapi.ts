@@ -3,7 +3,7 @@ export const hermesOpenApi = {
   "openapi": "3.0.3",
   "info": {
     "title": "Whatsarr Hermes local API",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "servers": [
     {
@@ -494,6 +494,187 @@ export const hermesOpenApi = {
           }
         }
       }
+    },
+    "/api/agent/tmdb": {
+      "get": {
+        "operationId": "queryTmdbCatalogue",
+        "summary": "Interroger les lectures publiques de TMDB v3 avec la clé Whatsarr",
+        "security": [],
+        "description": "Choisir un path dans /api/agent/tmdb/catalogue et ajouter ses paramètres TMDB à la query string. Langue fr-FR par défaut sur les routes compatibles. Retourne les données et la pagination TMDB sans réduction. Host fixe, pas de session TMDB, pas de modification de compte.",
+        "parameters": [
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 400
+            },
+            "example": "movie/550/recommendations"
+          },
+          {
+            "name": "params",
+            "in": "query",
+            "required": false,
+            "style": "form",
+            "explode": true,
+            "description": "Paramètres à plat documentés pour le path choisi (query, language, page, filtres discover, append_to_response…). Pas de paramètre littéral params.",
+            "schema": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "maxLength": 2048
+              }
+            },
+            "example": {
+              "language": "fr-FR",
+              "page": "1"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Données publiques TMDB, résultats vides possibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TmdbResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "AGENT_INVALID_REQUEST ou TMDB_BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "TMDB_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "TMDB_NOT_CONFIGURED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "TMDB_RATE_LIMITED : différer le prochain appel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "TMDB_AUTHENTICATION_ERROR ou TMDB_UNREACHABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "TMDB_TIMEOUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/tmdb/catalogue": {
+      "get": {
+        "operationId": "getTmdbCatalogue",
+        "summary": "Découvrir les 116 chemins publics TMDB et leurs paramètres",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Catalogue embarqué disponible sans configuration TMDB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "source",
+                    "version",
+                    "method",
+                    "routes"
+                  ],
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "tmdb"
+                      ]
+                    },
+                    "version": {
+                      "type": "string",
+                      "enum": [
+                        "3"
+                      ]
+                    },
+                    "method": {
+                      "type": "string",
+                      "enum": [
+                        "GET"
+                      ]
+                    },
+                    "routes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "path",
+                          "summary",
+                          "parameters"
+                        ],
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "parameters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -966,6 +1147,41 @@ export const hermesOpenApi = {
             "enum": [
               "tautulli"
             ]
+          }
+        }
+      },
+      "TmdbResult": {
+        "type": "object",
+        "required": [
+          "source",
+          "path",
+          "data",
+          "attribution"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "tmdb"
+            ]
+          },
+          "path": {
+            "type": "string"
+          },
+          "data": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": true
+              },
+              {
+                "type": "array",
+                "items": {}
+              }
+            ]
+          },
+          "attribution": {
+            "type": "string"
           }
         }
       }

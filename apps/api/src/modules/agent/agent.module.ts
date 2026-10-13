@@ -8,6 +8,9 @@ import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { AgentController } from "./agent.controller";
 import { AgentService } from "./agent.service";
 import { AgentMessagePipe } from "./agent.dto";
+import { SettingsModule } from "../settings/settings.module";
+import { AgentTmdbController } from "./agent-tmdb.controller";
+import { AgentTmdbService } from "./agent-tmdb.service";
 
-@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule], controllers: [AgentController], providers: [AgentService, AgentMessagePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe] })
+@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule, SettingsModule], controllers: [AgentController, AgentTmdbController], providers: [AgentService, AgentMessagePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe, AgentTmdbService] })
 export class AgentModule {}

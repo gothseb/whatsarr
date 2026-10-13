@@ -29,7 +29,7 @@ async function smoke() {
     const base=await app.getUrl();
     const schema=await (await fetch(`${base}/api/agent/openapi.json`)).json();
     assert.deepEqual(schema,JSON.parse(await readFile(resolve(__dirname,"../../../docs/hermes-agent.openapi.json"),"utf8")));
-    for(const [path,code,statusCode] of [["media/search?q=Alien","PLEX_NOT_CONFIGURED",409],["media/recent","PLEX_NOT_CONFIGURED",409],["watch-history","TAUTULLI_NOT_CONFIGURED",409],["messages/missing","AGENT_MESSAGE_NOT_FOUND",404],["tmdb?path=movie/popular","TMDB_NOT_CONFIGURED",409]]) {
+    for(const [path,code,statusCode] of [["media/catalogue","PLEX_NOT_CONFIGURED",409],["media/search?q=Alien","PLEX_NOT_CONFIGURED",409],["media/recent","PLEX_NOT_CONFIGURED",409],["watch-history","TAUTULLI_NOT_CONFIGURED",409],["messages/missing","AGENT_MESSAGE_NOT_FOUND",404],["tmdb?path=movie/popular","TMDB_NOT_CONFIGURED",409]]) {
       const response=await fetch(`${base}/api/agent/${path}`);
       assert.equal(response.status,statusCode,path);
       const body=await response.json();assert.equal(body.error.code,code);assert.ok(body.error.requestId);

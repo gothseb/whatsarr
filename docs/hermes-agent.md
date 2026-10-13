@@ -40,15 +40,35 @@ Après le POST, consulter `GET /api/agent/messages/JOB_ID` sans cookie. La répo
 curl http://localhost:3000/api/agent/messages/JOB_ID
 ```
 
+## Catalogue Plex et bibliothèques autorisées
+
+Hermes peut consulter les films et séries présents dans Plex avec `GET /api/agent/media/catalogue`. Seules les bibliothèques dont la case **Récap** est cochée dans la gestion des bibliothèques sont accessibles. La case des messages automatiques seule ne donne pas accès à l’agent. Cette sélection s’applique aussi à la recherche et aux derniers ajouts Plex ; elle est relue à chaque appel.
+
+```bash
+# Films et séries, première page
+curl 'http://localhost:3000/api/agent/media/catalogue?offset=0&limit=100'
+
+# Films uniquement, puis séries uniquement
+curl 'http://localhost:3000/api/agent/media/catalogue?mediaType=movie&offset=0&limit=100'
+curl 'http://localhost:3000/api/agent/media/catalogue?mediaType=series&offset=0&limit=100'
+
+# Une bibliothèque autorisée précise
+curl 'http://localhost:3000/api/agent/media/catalogue?libraryKey=1&limit=20'
+```
+
+La réponse est `{ items, pagination: { offset, limit, hasMore }, source: "plex" }`, avec les mêmes métadonnées que la recherche ci-dessous. Filtres facultatifs : libraryKey, mediaType (movie/series), offset >= 0, limit de 1 à 100 (20 par défaut). Aucun q n’est requis ou accepté. Pour parcourir la liste, augmenter offset de limit tant que hasMore vaut true. Le tri par titre est global entre les bibliothèques autorisées et précède la pagination ; le catalogue reste vivant entre deux appels.
+
+Aucune bibliothèque cochée Récap : liste vide, sans consultation du catalogue Plex. libraryKey inexistant ou exclu du récap lorsqu’il est fourni : 404 PLEX_LIBRARY_NOT_FOUND. Plex doit être configuré ; les autres erreurs et limites sont celles de la recherche. Les épisodes se consultent via les derniers ajouts, pas dans cette liste de films et séries.
+
 ## Rechercher dans Plex
 
 ```bash
 curl 'http://localhost:3000/api/agent/media/search?q=Alien&mediaType=movie&offset=0&limit=20'
 ```
 
-Films et séries disponibles dans les bibliothèques Plex (`movie` et `series`). `q` obligatoire, trimé, 1–200 unités UTF-16 ; titre contenant q sans distinction de casse. Filtres facultatifs libraryKey et mediaType, offset >=0, limit 1–100 (défaut 20). Les types répétés/tableaux, paramètres inconnus et nombres ambigus sont refusés. Les métadonnées publiques sont ratingKey, libraryKey, title, mediaType, year, summary, genres, addedAt ; les champs facultatifs absents restent null/genres []. Aucun token, chemin vidéo ou URL authentifiée.
+Films et séries disponibles dans les bibliothèques Plex activées pour le Récap (`movie` et `series`). `q` obligatoire, trimé, 1–200 unités UTF-16 ; titre contenant q sans distinction de casse. Filtres facultatifs libraryKey et mediaType, offset >=0, limit 1–100 (défaut 20). Les types répétés/tableaux, paramètres inconnus et nombres ambigus sont refusés. Les métadonnées publiques sont ratingKey, libraryKey, title, mediaType, year, summary, genres, addedAt ; les champs facultatifs absents restent null/genres []. Aucun token, chemin vidéo ou URL authentifiée.
 
-La réponse est `{ items, pagination: { offset, limit, hasMore }, source: "plex" }`. Bibliothèque inexistante : 404 PLEX_LIBRARY_NOT_FOUND ; bibliothèque existante sans correspondance : 200 vide. Source non configurée : 409 PLEX_NOT_CONFIGURED ; refus des identifiants : 502 PLEX_AUTHENTICATION_ERROR ; réseau/corps/pagination invalide : 502 PLEX_UNREACHABLE ; délai total dépassé : 504 PLEX_TIMEOUT. Ces lectures fonctionnent sans groupe ni session WhatsApp et ne créent aucun job.
+La réponse est `{ items, pagination: { offset, limit, hasMore }, source: "plex" }`. Bibliothèque inexistante ou exclue du Récap : 404 PLEX_LIBRARY_NOT_FOUND ; bibliothèque existante sans correspondance : 200 vide. Source non configurée : 409 PLEX_NOT_CONFIGURED ; refus des identifiants : 502 PLEX_AUTHENTICATION_ERROR ; réseau/corps/pagination invalide : 502 PLEX_UNREACHABLE ; délai total dépassé : 504 PLEX_TIMEOUT. Ces lectures fonctionnent sans groupe ni session WhatsApp et ne créent aucun job.
 
 La V1 vérifie le titre côté client sur des pages de catalogue, sans dépendre d’un hub limité ou d’un filtre approximatif. Tri titre sans casse, libraryKey, ratingKey ; déduplication par bibliothèque/identifiant avant pagination. Le catalogue est vivant : l’offset peut bouger entre appels. Budget total 15s, 4 Mio par corps, 32 Mio cumulés, 20 000 lignes amont et 200 pages par section maximum. Si ces limites empêchent une réponse complète, la route retourne une erreur explicite ; aucun résultat partiel trompeur. Aucun SDK ni changement du client historique d’import JSON/XML.
 
@@ -60,7 +80,7 @@ Références serveur : [API Plex officielle](https://developer.plex.tv/pms/), [c
 curl 'http://localhost:3000/api/agent/media/recent?mediaType=episode&offset=0&limit=20'
 ```
 
-Filtres facultatifs libraryKey et mediaType (movie/series/episode) ; pagination et erreurs identiques à search. Sans type, inclure les trois catégories, sans saisons/collections. Tri global addedAt décroissant puis libraryKey/ratingKey ; dates manquantes en fin. La réponse ajoute releaseDate (date civile YYYY-MM-DD), seriesTitle, seasonNumber et episodeNumber (null hors épisode). Saison/épisode zéro sont conservés.
+Seules les bibliothèques activées pour le Récap sont consultées. Filtres facultatifs libraryKey et mediaType (movie/series/episode) ; pagination et erreurs identiques à search. Sans type, inclure les trois catégories, sans saisons/collections. Tri global addedAt décroissant puis libraryKey/ratingKey ; dates manquantes en fin. La réponse ajoute releaseDate (date civile YYYY-MM-DD), seriesTitle, seasonNumber et episodeNumber (null hors épisode). Saison/épisode zéro sont conservés.
 
 Un film de 1979 ajouté hier apparaît selon son ajout, sans fenêtre de six mois. Un épisode reste un épisode ; il n'est pas agrégé en une nouvelle série artificielle. Aucun job/annonce/récap n'est lancé. Le client utilise les listes de section/type (types Plex 1/2/4), et non un hub regroupant les derniers ajouts. Tant que les capacités de tri du serveur réel ne sont pas confirmées, la V1 fusionne les pages bornées puis trie le résultat complet côté client ; limites de collecte identiques à search, erreur explicite si le catalogue dépasse le budget. Les égalités sur plusieurs pages sont ainsi complètes avant découpage.
 
@@ -80,7 +100,7 @@ Le budget de lecture est partagé entre pages : 15s, 4 Mio par corps, 32 Mio cum
 
 Le client respecte le sous-chemin de l'installation, refuse les redirections et utilise la clé configurée côté serveur. Le paramètre apikey est conservé pour compatibilité avec les anciennes instances ; il n'est jamais logué ou renvoyé à Hermes. [Référence Tautulli officielle](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference#get_history). Le calcul et le scheduler du récap utilisent leur chemin existant.
 
-Hermes peut donc lire search/recent/watch-history, rédiger ses news ou conseils, puis envoyer un POST messages et suivre le job. Whatsarr ne génère ni ne planifie les conseils à sa place.
+Hermes peut donc lire catalogue/search/recent/watch-history, rédiger ses news ou conseils, puis envoyer un POST messages et suivre le job. Whatsarr ne génère ni ne planifie les conseils à sa place.
 
 ## TMDB : recherche, recommandations et tendances
 

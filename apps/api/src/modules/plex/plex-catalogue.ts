@@ -4,15 +4,17 @@ import { AgentError } from "../agent/agent.types";
 import { AgentMediaItem, AgentMediaQuery, AgentRecentItem, AgentRecentQuery } from "../agent/agent-media.types";
 
 type PlexConfig = {baseUrl:string;apiKey:string};
-export async function searchPlexCatalogue(config: PlexConfig, query: AgentMediaQuery) {
-  const result = await readCatalogue(config,query,false);
+export async function searchPlexCatalogue(config: PlexConfig, query: AgentMediaQuery, allowedLibraryKeys?: ReadonlySet<string>) {
+  const result = await readCatalogue(config,query,false,allowedLibraryKeys);
   return {...result,items:result.items as AgentMediaItem[]};
 }
-export async function recentPlexCatalogue(config: PlexConfig, query: AgentRecentQuery) {
-  const result = await readCatalogue(config,query,true);
+export async function recentPlexCatalogue(config: PlexConfig, query: AgentRecentQuery, allowedLibraryKeys?: ReadonlySet<string>) {
+  const result = await readCatalogue(config,query,true,allowedLibraryKeys);
   return {...result,items:result.items as AgentRecentItem[]};
 }
-async function readCatalogue(config: PlexConfig, query: AgentMediaQuery | AgentRecentQuery, recent: boolean) {
+async function readCatalogue(config: PlexConfig, query: AgentMediaQuery | AgentRecentQuery, recent: boolean, allowedLibraryKeys?: ReadonlySet<string>) {
+  if (query.libraryKey !== undefined && allowedLibraryKeys !== undefined && !allowedLibraryKeys.has(query.libraryKey)) throw new AgentError(404,"PLEX_LIBRARY_NOT_FOUND","Bibliothèque Plex introuvable ou non activée pour le récapitulatif.");
+  if (allowedLibraryKeys?.size === 0) return {items: [], pagination: { offset: query.offset, limit: query.limit, hasMore: false }, source: "plex" as const};
   const session: AgentSourceSession = new AgentSourceSession("PLEX");
   try {
     const url = (path: string) => {
@@ -36,6 +38,7 @@ async function readCatalogue(config: PlexConfig, query: AgentMediaQuery | AgentR
     const items = new Map<string,AgentMediaItem | AgentRecentItem>();
     let consumed = 0;
     for (const section of sections) {
+      if (allowedLibraryKeys !== undefined && !allowedLibraryKeys.has(section.key)) continue;
       if (query.libraryKey !== undefined && section.key !== query.libraryKey) continue;
       if (!["movie","show"].includes(section.type)) continue;
       const types = section.type === "movie" ? ["movie"] : recent ? ["series","episode"] : ["series"];

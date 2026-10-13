@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Whatsarr Hermes local API",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   "servers": [
     {
@@ -209,7 +209,7 @@
             }
           }
         ],
-        "description": "Lecture seule. Filtrage et deduplication avant pagination globale. Toutes bibliotheques video sans filtrage recap. Catalogue vivant ; collecte bornee, erreur si depassee.",
+        "description": "Lecture seule. Filtrage et deduplication avant pagination globale. Catalogue vivant ; collecte bornee, erreur si depassee. Seules les bibliothèques activées pour le Récap sont accessibles. Sélection relue à chaque appel, appliquée avant pagination. Bibliothèque explicitement demandée mais exclue : 404 ; aucune sélection : liste vide.",
         "responses": {
           "200": {
             "description": "Recherche complete, resultat vide valide",
@@ -323,7 +323,7 @@
             }
           }
         ],
-        "description": "Ajouts tries par addedAt decroissant, libraryKey/ratingKey en cas d’egalite. Pas de filtre sur la sortie ni fenetre de six mois. Lecture seule.",
+        "description": "Ajouts tries par addedAt decroissant, libraryKey/ratingKey en cas d’egalite. Pas de filtre sur la sortie ni fenetre de six mois. Lecture seule. Seules les bibliothèques activées pour le Récap sont accessibles. Sélection relue à chaque appel, appliquée avant pagination. Bibliothèque explicitement demandée mais exclue : 404 ; aucune sélection : liste vide.",
         "responses": {
           "200": {
             "description": "Recherche complete, resultat vide valide",
@@ -673,6 +673,120 @@
             }
           }
         }
+      }
+    },
+    "/api/agent/media/catalogue": {
+      "get": {
+        "security": [],
+        "parameters": [
+          {
+            "name": "libraryKey",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "mediaType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "movie",
+                "series"
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "description": "Catalogue paginé limité aux bibliothèques dont Récap est activé. Filtrage et tri global avant pagination. Aucune sélection : liste vide. Une bibliothèque explicitement demandée mais exclue retourne 404. La sélection est relue à chaque appel.",
+        "responses": {
+          "200": {
+            "description": "Catalogue des bibliothèques activées pour le Récap ; liste vide valide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "AGENT_INVALID_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "PLEX_LIBRARY_NOT_FOUND",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "PLEX_NOT_CONFIGURED",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "PLEX_AUTHENTICATION_ERROR ou PLEX_UNREACHABLE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "PLEX_TIMEOUT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Lister les films et séries Plex des bibliothèques activées pour le Récap",
+        "operationId": "listPlexMedia"
       }
     }
   },

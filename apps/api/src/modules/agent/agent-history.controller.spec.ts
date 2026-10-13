@@ -14,7 +14,7 @@ describe("Hermes history HTTP",()=>{
  const settings={getDecryptedService:vi.fn(async()=>({baseUrl:"http://tautulli",apiKey:"private"}))};const f=vi.fn();const sends={createAgentJob:vi.fn()},whatsapp={getServerGroup:vi.fn()};
  const clientFetch=globalThis.fetch;
  beforeAll(async()=>{
-  const module=await Test.createTestingModule({controllers:[AgentController],providers:[AgentHistoryPipe,{provide:AgentService,useFactory:()=>new AgentService(sends as never,whatsapp as never,{} as never,new TautulliService(settings as never))}]}).compile();
+  const module=await Test.createTestingModule({controllers:[AgentController],providers:[AgentHistoryPipe,{provide:AgentService,useFactory:()=>new AgentService(sends as never,whatsapp as never,{} as never,new TautulliService(settings as never), {} as never)}]}).compile();
   app=module.createNestApplication();app.setGlobalPrefix("api");configureAgentHttp(app);app.useGlobalPipes(new ValidationPipe({whitelist:true,forbidNonWhitelisted:true,transform:true}));await app.listen(0,"127.0.0.1");base=await app.getUrl();
  });
  beforeEach(()=>{f.mockReset();settings.getDecryptedService.mockResolvedValue({baseUrl:"http://tautulli",apiKey:"private"});vi.stubGlobal("fetch",f);});afterEach(()=>vi.unstubAllGlobals());afterAll(async()=>app.close());

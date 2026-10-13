@@ -1,7 +1,7 @@
 import { Injectable, PipeTransform } from "@nestjs/common";
 import { invalidRequest } from "./agent.dto";
 import { record } from "./agent-source";
-import { AgentMediaQuery, AgentRecentQuery } from "./agent-media.types";
+import { AgentCatalogueQuery, AgentMediaQuery, AgentRecentQuery } from "./agent-media.types";
 
 export function scalarQuery(value: unknown, keys: string[]): Record<string,string> {
   const input = record(value);
@@ -19,6 +19,15 @@ export function pagination(query: Record<string,string>) {
   const offset = number("offset",0), limit = number("limit",20);
   if (limit < 1 || limit > 100) invalidRequest();
   return {offset,limit};
+}
+@Injectable()
+export class AgentCataloguePipe implements PipeTransform<unknown, AgentCatalogueQuery> {
+  transform(value: unknown): AgentCatalogueQuery {
+    const query = scalarQuery(value, ["libraryKey", "mediaType", "offset", "limit"]);
+    if (query.libraryKey !== undefined && (!query.libraryKey.trim() || query.libraryKey.length > 256)) invalidRequest();
+    if (query.mediaType !== undefined && !["movie", "series"].includes(query.mediaType)) invalidRequest();
+    return { ...pagination(query), libraryKey: query.libraryKey?.trim(), mediaType: query.mediaType as AgentCatalogueQuery["mediaType"] };
+  }
 }
 @Injectable()
 export class AgentSearchPipe implements PipeTransform<unknown,AgentMediaQuery> {

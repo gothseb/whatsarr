@@ -1,5 +1,5 @@
 import { AgentError } from "../agent/agent.types";
-import { AgentMediaQuery, AgentRecentQuery } from "../agent/agent-media.types";
+import { AgentCatalogueQuery, AgentMediaQuery, AgentRecentQuery } from "../agent/agent-media.types";
 import { searchPlexCatalogue, recentPlexCatalogue } from "./plex-catalogue";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { SettingsService } from "../settings/settings.service";
@@ -20,18 +20,22 @@ export interface PlexLibrary {
 export class PlexService {
   constructor(private readonly settings: SettingsService) {}
 
-  async searchMedia(query: AgentMediaQuery) {
+  async searchMedia(query: AgentMediaQuery, allowedLibraryKeys?: ReadonlySet<string>) {
     const settings = await this.settings.getDecryptedService("plex");
     if (!settings?.baseUrl || !settings.apiKey) throw new AgentError(409,"PLEX_NOT_CONFIGURED","Plex n’est pas configure.");
     try { new URL(settings.baseUrl); } catch { throw new AgentError(409,"PLEX_NOT_CONFIGURED","URL Plex invalide."); }
-    return searchPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query);
+    return searchPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query,allowedLibraryKeys);
   }
 
-  async recentMedia(query: AgentRecentQuery) {
+  async recentMedia(query: AgentRecentQuery, allowedLibraryKeys?: ReadonlySet<string>) {
     const settings = await this.settings.getDecryptedService("plex");
     if (!settings?.baseUrl || !settings.apiKey) throw new AgentError(409,"PLEX_NOT_CONFIGURED","Plex n’est pas configure.");
     try { new URL(settings.baseUrl); } catch { throw new AgentError(409,"PLEX_NOT_CONFIGURED","URL Plex invalide."); }
-    return recentPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query);
+    return recentPlexCatalogue({baseUrl:settings.baseUrl,apiKey:settings.apiKey},query,allowedLibraryKeys);
+  }
+
+  listMedia(query: AgentCatalogueQuery, allowedLibraryKeys: ReadonlySet<string>) {
+    return this.searchMedia({ ...query, q: "" }, allowedLibraryKeys);
   }
 
   async fetchUsers(): Promise<ImportedPlexUser[]> {

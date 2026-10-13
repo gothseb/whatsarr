@@ -29,7 +29,7 @@ describe("Hermes HTTP with persistent SQLite", () => {
     notifications=new NotificationsService(prisma,templates as never,adapter as never);
     process.env.AUTH_DISABLED="false";
     const module=await Test.createTestingModule({controllers:[AgentController, NotificationsController],providers:[
-      {provide:AgentService,useFactory:()=>new AgentService(notifications,group as never,{searchMedia:vi.fn()} as never,{history:vi.fn()} as never)},
+      {provide:AgentService,useFactory:()=>new AgentService(notifications,group as never,{searchMedia:vi.fn()} as never,{history:vi.fn()} as never, prisma)},
       {provide:NotificationsService,useValue:notifications}, AgentMessagePipe, {provide:AuthGuard,useValue:new AuthGuard(new AuthService(prisma))},
       {provide:AuthService,useValue:new AuthService(prisma)}
     ]}).overrideGuard(AuthGuard).useValue(new AuthGuard(new AuthService(prisma))).compile();

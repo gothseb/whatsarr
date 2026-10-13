@@ -35,6 +35,8 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
       <Address label="Webhook d’envoi · POST" value={addresses.webhook} />
       <Address label="Page de documentation" value={addresses.documentation} />
       <Address label="Contrat OpenAPI · JSON" value={addresses.openapi} />
+      <Address label="Films et séries Plex · JSON" value={`${origin}/api/agent/media/catalogue`} />
+      <Address label="Catalogue des lectures TMDB · JSON" value={`${origin}/api/agent/tmdb/catalogue`} />
       <a className="primary-button" href={addresses.documentation} target="_blank" rel="noreferrer">Ouvrir la documentation</a>
       <p>Si Hermes tourne sur une autre machine ou dans un conteneur, ouvre Whatsarr avec son adresse réseau et copie les liens depuis cette adresse. localhost désigne la machine de l’agent.</p>
     </section>
@@ -43,10 +45,11 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
       <ul>
         <li>Envoyer un texte, ou une photo JPEG/PNG avec sa légende.</li>
         <li>Suivre l’état d’envoi d’un message.</li>
-        <li>Rechercher les films et séries disponibles dans Plex.</li>
+        <li>Lister et rechercher les films et séries présents dans les bibliothèques Plex activées pour le Récap.</li>
         <li>Consulter les derniers ajouts Plex et les derniers visionnages Tautulli.</li>
+        <li>Interroger TMDB : recherche, recommandations, titres similaires, tendances, détails, acteurs, images, vidéos et plateformes.</li>
       </ul>
-      <p>Configure Plex et Tautulli dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
+      <p>Coche Récap pour les bibliothèques accessibles à Hermes. Configure Plex, Tautulli et TMDB dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
     </section>
   </div>;
 }

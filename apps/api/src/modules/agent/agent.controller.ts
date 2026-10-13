@@ -1,7 +1,7 @@
 import { AgentHistoryPipe } from "./agent-history.dto";
 import { AgentHistoryQuery } from "../tautulli/tautulli.types";
-import { AgentSearchPipe, AgentRecentPipe } from "./agent-media.dto";
-import { AgentMediaQuery, AgentRecentQuery } from "./agent-media.types";
+import { AgentCataloguePipe, AgentSearchPipe, AgentRecentPipe } from "./agent-media.dto";
+import { AgentCatalogueQuery, AgentMediaQuery, AgentRecentQuery } from "./agent-media.types";
 import { Body, Controller, Get, Inject, Param, Query, Post, Req, Res } from "@nestjs/common";
 import type { Response } from "express";
 import { AgentService } from "./agent.service";
@@ -23,6 +23,9 @@ export class AgentController {
 
   @Get("media/search")
   search(@Query(AgentSearchPipe) query: AgentMediaQuery) { return this.agent.search(query); }
+
+  @Get("media/catalogue")
+  catalogue(@Query(AgentCataloguePipe) query: AgentCatalogueQuery) { return this.agent.catalogue(query); }
 
   @Get("media/recent")
   recent(@Query(AgentRecentPipe) query: AgentRecentQuery) { return this.agent.recent(query); }

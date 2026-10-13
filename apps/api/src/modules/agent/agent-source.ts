@@ -6,7 +6,7 @@ export class AgentSourceSession {
   private readonly deadline = Date.now() + 15_000;
   private readonly timer = setTimeout(() => this.controller.abort(), 15_000);
   private bytes = 0;
-  constructor(private readonly source: "PLEX" | "TAUTULLI") {}
+  constructor(private readonly source: "PLEX" | "TAUTULLI" | "TMDB") {}
 
   error(kind: "UNREACHABLE" | "TIMEOUT" | "AUTHENTICATION_ERROR"): never {
     throw new AgentError(kind === "TIMEOUT" ? 504 : 502, `${this.source}_${kind}`, `${this.source} : ${kind === "TIMEOUT" ? "delai de lecture depasse" : kind === "AUTHENTICATION_ERROR" ? "identifiants refuses" : "reponse inaccessible ou inexploitable"}.`);
@@ -22,6 +22,10 @@ export class AgentSourceSession {
       this.checkDeadline();
       response = await fetch(url, { headers: {Accept:"application/json", ...headers}, redirect: "error", signal: this.controller.signal });
       if ([401,403].includes(response.status)) this.error("AUTHENTICATION_ERROR");
+      if (this.source === "TMDB" && [400, 404, 429].includes(response.status)) {
+        const codes: Record<number, string> = { 400: "TMDB_BAD_REQUEST", 404: "TMDB_NOT_FOUND", 429: "TMDB_RATE_LIMITED" };
+        throw new AgentError(response.status, codes[response.status], response.status === 429 ? "Limite TMDB atteinte. Réessayez plus tard." : response.status === 404 ? "Ressource TMDB introuvable." : "Paramètres refusés par TMDB.");
+      }
       if (!response.ok || !response.body || Number(response.headers.get("content-length")) > 4*1024*1024) this.error("UNREACHABLE");
       reader = response.body.getReader();
       let size = 0;

@@ -1,9 +1,11 @@
-export interface AgentMediaQuery {
+export interface AgentCatalogueQuery {
   offset: number;
   limit: number;
-  q: string;
   libraryKey?: string;
   mediaType?: "movie" | "series";
+}
+export interface AgentMediaQuery extends AgentCatalogueQuery {
+  q: string;
 }
 export interface AgentMediaItem {
   ratingKey: string;

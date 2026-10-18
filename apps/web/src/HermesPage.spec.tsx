@@ -15,7 +15,7 @@ describe("Hermes connection and documentation", () => {
   });
   it("documents all agent routes with adapted examples and a valid OpenAPI link", () => {
     const html = renderToStaticMarkup(<HermesDocumentation origin="http://localhost:3001" />);
-    for (const route of ["messages", "messages/JOB_ID", "media/catalogue", "media/search", "media/recent", "watch-history", "openapi.json", "tmdb?path=", "tmdb/catalogue"]) expect(html).toContain(`/api/agent/${route}`);
+    for (const route of ["messages", "messages/JOB_ID", "media/catalogue", "media/search", "media/recent", "watch-history", "openapi.json", "tmdb?path=", "tmdb/catalogue", "media/collections", "media/collections/123/items", "media/availability", "radarr/movies", "radarr/tags", "radarr/options", "radarr/lookup", "sonarr/series", "sonarr/tags", "sonarr/options", "sonarr/lookup", "seerr/requests", "seerr/requests/42"]) expect(html).toContain(`/api/agent/${route}`);
     expect(html).toContain("http://localhost:3001/api/agent/messages");
     expect(html).not.toContain("localhost:3000");
     expect(html).toContain('href="/api/agent/openapi.json"');
@@ -23,5 +23,9 @@ describe("Hermes connection and documentation", () => {
     expect(html).toContain("Récap");
     expect(html).toContain("PLEX_LIBRARY_NOT_FOUND");
     expect(html).toContain("sans clé Hermes ni cookie");
+    expect(html).toContain("ARR_ADD_UNCERTAIN");
+    expect(html).toContain("Collections Plex, demandes et acquisitions");
+    expect(html).not.toContain("Vérifications de développement");
+    expect(html).toContain("http://localhost:3001/api/agent/radarr/movies");
   });
 });

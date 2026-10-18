@@ -36,6 +36,7 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
       <Address label="Page de documentation" value={addresses.documentation} />
       <Address label="Contrat OpenAPI · JSON" value={addresses.openapi} />
       <Address label="Films et séries Plex · JSON" value={`${origin}/api/agent/media/catalogue`} />
+      <Address label="Collections Plex · JSON" value={`${origin}/api/agent/media/collections`} />
       <Address label="Catalogue des lectures TMDB · JSON" value={`${origin}/api/agent/tmdb/catalogue`} />
       <a className="primary-button" href={addresses.documentation} target="_blank" rel="noreferrer">Ouvrir la documentation</a>
       <p>Si Hermes tourne sur une autre machine ou dans un conteneur, ouvre Whatsarr avec son adresse réseau et copie les liens depuis cette adresse. localhost désigne la machine de l’agent.</p>
@@ -47,9 +48,12 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
         <li>Suivre l’état d’envoi d’un message.</li>
         <li>Lister et rechercher les films et séries présents dans les bibliothèques Plex activées pour le Récap.</li>
         <li>Consulter les derniers ajouts Plex et les derniers visionnages Tautulli.</li>
+        <li>Consulter les collections Plex des bibliothèques Récap et leur contenu.</li>
+        <li>Voir le suivi, les tags et les fichiers Radarr/Sonarr, ainsi que les demandes Seerr et leur demandeur.</li>
+        <li>Ajouter directement un film Radarr ou une série Sonarr et vérifier séparément suivi, fichiers et présence Plex.</li>
         <li>Interroger TMDB : recherche, recommandations, titres similaires, tendances, détails, acteurs, images, vidéos et plateformes.</li>
       </ul>
-      <p>Coche Récap pour les bibliothèques accessibles à Hermes. Configure Plex, Tautulli et TMDB dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
+      <p>Coche Récap pour les bibliothèques accessibles à Hermes. Configure Plex, Tautulli, TMDB, Radarr, Sonarr et Seerr (Overseerr) dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
     </section>
   </div>;
 }

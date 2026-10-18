@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Whatsarr Hermes local API",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "servers": [
     {
@@ -788,6 +788,1319 @@
         "summary": "Lister les films et séries Plex des bibliothèques activées pour le Récap",
         "operationId": "listPlexMedia"
       }
+    },
+    "/api/agent/media/collections": {
+      "get": {
+        "summary": "Collections Plex des seules bibliothèques Récap ; tri titre/bibliothèque/id, filtrage avant pagination.",
+        "parameters": [
+          {
+            "name": "libraryKey",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlexCollection"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/media/collections/{id}/items": {
+      "get": {
+        "summary": "Contenu d’une collection dont l’appartenance Récap a été vérifiée ; 404 sinon.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*$"
+            }
+          },
+          {
+            "name": "libraryKey",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/media/availability": {
+      "get": {
+        "summary": "Disponibilité exacte : suivi et fichiers Arr séparés de la présence Plex Récap ; source en échec = state unknown.",
+        "parameters": [
+          {
+            "name": "mediaType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "movie",
+                "series"
+              ]
+            }
+          },
+          {
+            "name": "tmdbId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "tvdbId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mediaType": {
+                      "type": "string",
+                      "enum": [
+                        "movie",
+                        "series"
+                      ]
+                    },
+                    "tmdbId": {
+                      "type": "integer"
+                    },
+                    "tvdbId": {
+                      "type": "integer"
+                    },
+                    "arr": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "unknown"
+                              ]
+                            },
+                            "error": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "error"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "known"
+                              ]
+                            },
+                            "tracked": {
+                              "type": "boolean"
+                            },
+                            "item": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "tmdbId": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "tvdbId": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "year": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "episodeFileCount": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "episodeCount": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "monitored": {
+                                  "type": "boolean",
+                                  "nullable": true
+                                },
+                                "hasFile": {
+                                  "type": "boolean",
+                                  "nullable": true
+                                },
+                                "tags": {
+                                  "type": "array",
+                                  "items": {
+                                    "$ref": "#/components/schemas/ArrTag"
+                                  }
+                                }
+                              },
+                              "nullable": true
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "plex": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "unknown"
+                              ]
+                            },
+                            "error": {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "error"
+                          ]
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "known"
+                              ]
+                            },
+                            "present": {
+                              "type": "boolean"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "description": "Métadonnées catalogue Plex et episodeCount nullable pour séries."
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/radarr/movies": {
+      "get": {
+        "summary": "Suivi radarr, tags ID/libellé, fichiers présents et compteurs séries ; filtrage avant pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "monitored",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      },
+      "post": {
+        "summary": "Ajout direct radarr ; existant inchangé, choix validés, aucune relance aveugle après ARR_ADD_UNCERTAIN.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrAddResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "201": {
+            "description": "Titre créé dans le service. 200 signifie titre existant inchangé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrAddResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tmdbId",
+                  "qualityProfileId",
+                  "rootFolderId"
+                ],
+                "properties": {
+                  "tmdbId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "qualityProfileId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rootFolderId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "tagIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxItems": 100,
+                    "uniqueItems": true
+                  },
+                  "monitored": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "search": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/radarr/tags": {
+      "get": {
+        "summary": "Tags existants ID/libellé de radarr",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArrTag"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/radarr/options": {
+      "get": {
+        "summary": "Profils qualité, dossiers racine et tags à employer pour l’ajout radarr",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "qualityProfiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "rootFolders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "path": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "accessible": {
+                            "type": "boolean",
+                            "nullable": true
+                          },
+                          "freeSpace": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArrTag"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/radarr/lookup": {
+      "get": {
+        "summary": "Recherche exacte par identifiant externe dans radarr",
+        "parameters": [
+          {
+            "name": "tmdbId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "tmdbId": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "tvdbId": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "overview": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/sonarr/series": {
+      "get": {
+        "summary": "Suivi sonarr, tags ID/libellé, fichiers présents et compteurs séries ; filtrage avant pagination.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tagId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "monitored",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      },
+      "post": {
+        "summary": "Ajout direct sonarr ; existant inchangé, choix validés, aucune relance aveugle après ARR_ADD_UNCERTAIN.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrAddResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "201": {
+            "description": "Titre créé dans le service. 200 signifie titre existant inchangé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArrAddResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tvdbId",
+                  "qualityProfileId",
+                  "rootFolderId"
+                ],
+                "properties": {
+                  "tvdbId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "qualityProfileId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rootFolderId": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "tagIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "maxItems": 100,
+                    "uniqueItems": true
+                  },
+                  "monitored": {
+                    "type": "boolean",
+                    "default": true
+                  },
+                  "search": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "seasonNumbers": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "maxItems": 100,
+                    "uniqueItems": true,
+                    "description": "Sans ce champ : toutes les saisons sauf spéciaux. Tableau vide : aucune saison suivie."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/agent/sonarr/tags": {
+      "get": {
+        "summary": "Tags existants ID/libellé de sonarr",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArrTag"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/sonarr/options": {
+      "get": {
+        "summary": "Profils qualité, dossiers racine et tags à employer pour l’ajout sonarr",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "qualityProfiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "rootFolders": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "path": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "accessible": {
+                            "type": "boolean",
+                            "nullable": true
+                          },
+                          "freeSpace": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ArrTag"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/sonarr/lookup": {
+      "get": {
+        "summary": "Recherche exacte par identifiant externe dans sonarr",
+        "parameters": [
+          {
+            "name": "tvdbId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "year": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "tmdbId": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "tvdbId": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "overview": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/seerr/requests": {
+      "get": {
+        "summary": "Demandes Seerr avec demandeur, statuts distincts, dates et saisons ; sans email.",
+        "parameters": [
+          {
+            "name": "mediaType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "movie",
+                "series"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "enum": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ]
+            }
+          },
+          {
+            "name": "requestedBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SeerrRequest"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "offset": {
+                          "type": "integer"
+                        },
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "hasMore": {
+                          "type": "boolean"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
+    },
+    "/api/agent/seerr/requests/{id}": {
+      "get": {
+        "summary": "Détail d’une demande Seerr et son demandeur.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Réponse JSON normalisée.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "source": {
+                      "type": "string"
+                    },
+                    "item": {
+                      "$ref": "#/components/schemas/SeerrRequest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "404": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "409": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "502": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          },
+          "504": {
+            "description": "Erreur avec error.code, error.message et requestId ; aucun corps amont ni secret."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1295,6 +2608,244 @@
           },
           "attribution": {
             "type": "string"
+          }
+        }
+      },
+      "ArrTag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "label"
+        ]
+      },
+      "ArrItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "tmdbId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "tvdbId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "year": {
+            "type": "integer",
+            "nullable": true
+          },
+          "episodeFileCount": {
+            "type": "integer",
+            "nullable": true
+          },
+          "episodeCount": {
+            "type": "integer",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "monitored": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "hasFile": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrTag"
+            }
+          }
+        }
+      },
+      "ArrList": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "radarr",
+              "sonarr"
+            ]
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArrItem"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "offset": {
+                "type": "integer"
+              },
+              "limit": {
+                "type": "integer"
+              },
+              "hasMore": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "required": [
+          "source",
+          "items",
+          "pagination"
+        ]
+      },
+      "ArrAddResult": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "radarr",
+              "sonarr"
+            ]
+          },
+          "item": {
+            "$ref": "#/components/schemas/ArrItem"
+          },
+          "deduplicated": {
+            "type": "boolean"
+          },
+          "reconciled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "source",
+          "item",
+          "deduplicated"
+        ]
+      },
+      "SeerrRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "movie",
+              "series"
+            ],
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "tmdbId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "tvdbId": {
+            "type": "integer",
+            "nullable": true
+          },
+          "requestStatus": {
+            "type": "integer",
+            "nullable": true
+          },
+          "mediaStatus": {
+            "type": "integer",
+            "nullable": true
+          },
+          "requestedBy": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "nullable": true
+              },
+              "name": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "seasonNumber": {
+                  "type": "integer",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "integer",
+                  "nullable": true
+                }
+              }
+            }
+          },
+          "is4k": {
+            "type": "boolean",
+            "nullable": true,
+            "description": "Variante demandée. Si true, mediaStatus provient exclusivement de status4k, sinon null si ce statut manque."
+          }
+        }
+      },
+      "PlexCollection": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "libraryKey": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "summary": {
+            "type": "string",
+            "nullable": true
+          },
+          "childCount": {
+            "type": "integer",
+            "nullable": true
+          },
+          "collectionType": {
+            "type": "string",
+            "nullable": true
           }
         }
       }

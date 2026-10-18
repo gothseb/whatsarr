@@ -29,10 +29,19 @@ async function smoke() {
     const base=await app.getUrl();
     const schema=await (await fetch(`${base}/api/agent/openapi.json`)).json();
     assert.deepEqual(schema,JSON.parse(await readFile(resolve(__dirname,"../../../docs/hermes-agent.openapi.json"),"utf8")));
-    for(const [path,code,statusCode] of [["media/catalogue","PLEX_NOT_CONFIGURED",409],["media/search?q=Alien","PLEX_NOT_CONFIGURED",409],["media/recent","PLEX_NOT_CONFIGURED",409],["watch-history","TAUTULLI_NOT_CONFIGURED",409],["messages/missing","AGENT_MESSAGE_NOT_FOUND",404],["tmdb?path=movie/popular","TMDB_NOT_CONFIGURED",409]]) {
+    for(const [path,code,statusCode] of [["radarr/movies","RADARR_NOT_CONFIGURED",409],["sonarr/series","SONARR_NOT_CONFIGURED",409],["seerr/requests","SEERR_NOT_CONFIGURED",409],["media/collections","PLEX_NOT_CONFIGURED",409],["media/catalogue","PLEX_NOT_CONFIGURED",409],["media/search?q=Alien","PLEX_NOT_CONFIGURED",409],["media/recent","PLEX_NOT_CONFIGURED",409],["watch-history","TAUTULLI_NOT_CONFIGURED",409],["messages/missing","AGENT_MESSAGE_NOT_FOUND",404],["tmdb?path=movie/popular","TMDB_NOT_CONFIGURED",409]]) {
       const response=await fetch(`${base}/api/agent/${path}`);
       assert.equal(response.status,statusCode,path);
       const body=await response.json();assert.equal(body.error.code,code);assert.ok(body.error.requestId);
+    }
+    const availabilityResponse=await fetch(`${base}/api/agent/media/availability?mediaType=movie&tmdbId=550`);
+    assert.equal(availabilityResponse.status,200);
+    const availability=await availabilityResponse.json();
+    assert.equal(availability.arr.state,"unknown");assert.equal(availability.arr.error.code,"RADARR_NOT_CONFIGURED");
+    assert.equal(availability.plex.state,"unknown");assert.equal(availability.plex.error.code,"PLEX_NOT_CONFIGURED");
+    for(const [route,id] of [["radarr/movies",{tmdbId:550}],["sonarr/series",{tvdbId:42}]]) {
+      const response=await fetch(`${base}/api/agent/${route}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...id,qualityProfileId:1,rootFolderId:1})});
+      assert.equal(response.status,409);assert.ok((await response.json()).error.requestId);
     }
     const message=await fetch(`${base}/api/agent/messages`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messageId:"smoke",text:"No send"})});
     assert.equal(message.status,409);assert.equal((await message.json()).error.code,"WHATSAPP_GROUP_NOT_SELECTED");

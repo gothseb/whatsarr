@@ -27,7 +27,7 @@ export class AgentService {
 
   async catalogue(query: AgentCatalogueQuery) { return this.plex.listMedia(query, await this.recapLibraries(query.libraryKey)); }
 
-  private async recapLibraries(libraryKey?: string) {
+  async recapLibraries(libraryKey?: string) {
     const libraries = await this.prisma.monthlyRecapLibrary.findMany({ where: { included: true }, select: { plexKey: true } });
     const keys = new Set(libraries.map((library) => library.plexKey));
     if (libraryKey !== undefined && !keys.has(libraryKey)) throw new AgentError(404, "PLEX_LIBRARY_NOT_FOUND", "Bibliothèque Plex introuvable ou non activée pour le récapitulatif.");

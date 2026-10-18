@@ -1,3 +1,4 @@
+import { plexCollectionRead, plexExactAvailability, CollectionQuery } from "./plex-collections";
 import { AgentError } from "../agent/agent.types";
 import { AgentCatalogueQuery, AgentMediaQuery, AgentRecentQuery } from "../agent/agent-media.types";
 import { searchPlexCatalogue, recentPlexCatalogue } from "./plex-catalogue";
@@ -37,6 +38,15 @@ export class PlexService {
   listMedia(query: AgentCatalogueQuery, allowedLibraryKeys: ReadonlySet<string>) {
     return this.searchMedia({ ...query, q: "" }, allowedLibraryKeys);
   }
+
+  private async agentConfig() {
+    const settings = await this.settings.getDecryptedService("plex");
+    if (!settings?.baseUrl || !settings.apiKey) throw new AgentError(409,"PLEX_NOT_CONFIGURED","Plex n’est pas configuré.");
+    try { const u=new URL(settings.baseUrl);if(!["http:","https:"].includes(u.protocol))throw Error(); } catch { throw new AgentError(409,"PLEX_NOT_CONFIGURED","URL Plex invalide."); }
+    return {baseUrl:settings.baseUrl,apiKey:settings.apiKey};
+  }
+  async collections(query:CollectionQuery,allowed:ReadonlySet<string>,id?:string){return plexCollectionRead(await this.agentConfig(),allowed,query,id);}
+  async availability(type:"movie"|"series",id:number,allowed:ReadonlySet<string>){return plexExactAvailability(await this.agentConfig(),allowed,type,id);}
 
   async fetchUsers(): Promise<ImportedPlexUser[]> {
     const settings = await this.settings.getDecryptedService("plex");

@@ -6,22 +6,26 @@ export class AgentSourceSession {
   private readonly deadline = Date.now() + 15_000;
   private readonly timer = setTimeout(() => this.controller.abort(), 15_000);
   private bytes = 0;
-  constructor(private readonly source: "PLEX" | "TAUTULLI" | "TMDB") {}
+  constructor(private readonly source: "PLEX" | "TAUTULLI" | "TMDB" | "RADARR" | "SONARR" | "SEERR") {}
 
   error(kind: "UNREACHABLE" | "TIMEOUT" | "AUTHENTICATION_ERROR"): never {
     throw new AgentError(kind === "TIMEOUT" ? 504 : 502, `${this.source}_${kind}`, `${this.source} : ${kind === "TIMEOUT" ? "delai de lecture depasse" : kind === "AUTHENTICATION_ERROR" ? "identifiants refuses" : "reponse inaccessible ou inexploitable"}.`);
   }
   close() { clearTimeout(this.timer); this.controller.abort(); }
 
-  async json(url: URL, headers: Record<string,string>): Promise<unknown> {
+  async json(url: URL, headers: Record<string,string>, body?: unknown): Promise<unknown> {
     let response: Response | undefined;
     let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
     const cancel = () => { void reader?.cancel().catch(() => undefined); };
     this.controller.signal.addEventListener("abort", cancel);
     try {
       this.checkDeadline();
-      response = await fetch(url, { headers: {Accept:"application/json", ...headers}, redirect: "error", signal: this.controller.signal });
+      response = await fetch(url, { method: body === undefined ? "GET" : "POST", body: body === undefined ? undefined : JSON.stringify(body), headers: {Accept:"application/json", ...(body === undefined ? {} : {"Content-Type":"application/json"}), ...headers}, redirect: "error", signal: this.controller.signal });
       if ([401,403].includes(response.status)) this.error("AUTHENTICATION_ERROR");
+      if (["RADARR","SONARR","SEERR"].includes(this.source) && [400,404,409,422,429].includes(response.status)) {
+        const suffix=response.status===404?"NOT_FOUND":response.status===429?"RATE_LIMITED":"BAD_REQUEST";
+        throw new AgentError(response.status,`${this.source}_${suffix}`,`${this.source} : requête refusée.`);
+      }
       if (this.source === "TMDB" && [400, 404, 429].includes(response.status)) {
         const codes: Record<number, string> = { 400: "TMDB_BAD_REQUEST", 404: "TMDB_NOT_FOUND", 429: "TMDB_RATE_LIMITED" };
         throw new AgentError(response.status, codes[response.status], response.status === 429 ? "Limite TMDB atteinte. Réessayez plus tard." : response.status === 404 ? "Ressource TMDB introuvable." : "Paramètres refusés par TMDB.");

@@ -1,3 +1,9 @@
+import { AgentArrController } from "./agent-arr.controller";
+import { AgentArrService } from "./agent-arr.service";
+import { AgentRequestsController } from "./agent-requests.controller";
+import { AgentRequestsService } from "./agent-requests.service";
+import { AgentCollectionsController } from "./agent-collections.controller";
+import { AgentAvailabilityService } from "./agent-availability.service";
 import { TautulliModule } from "../tautulli/tautulli.module";
 import { AgentHistoryPipe } from "./agent-history.dto";
 import { PlexModule } from "../plex/plex.module";
@@ -12,5 +18,5 @@ import { SettingsModule } from "../settings/settings.module";
 import { AgentTmdbController } from "./agent-tmdb.controller";
 import { AgentTmdbService } from "./agent-tmdb.service";
 
-@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule, SettingsModule], controllers: [AgentController, AgentTmdbController], providers: [AgentService, AgentMessagePipe, AgentCataloguePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe, AgentTmdbService] })
+@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule, SettingsModule], controllers: [AgentController, AgentTmdbController, AgentArrController, AgentRequestsController, AgentCollectionsController], providers: [AgentService, AgentMessagePipe, AgentCataloguePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe, AgentTmdbService, AgentArrService, AgentRequestsService, AgentAvailabilityService] })
 export class AgentModule {}

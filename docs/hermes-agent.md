@@ -175,6 +175,66 @@ Erreurs : 400 AGENT_INVALID_REQUEST (validation locale) ou TMDB_BAD_REQUEST (par
 
 Sources : [référence API TMDB](https://developer.themoviedb.org/reference/intro/getting-started), [contrat officiel utilisé pour le catalogue](https://developer.themoviedb.org/openapi/tmdb-api.json), [authentification](https://developer.themoviedb.org/docs/authentication-application). Les résultats comprennent l'attribution : This product uses the TMDB API but is not endorsed or certified by TMDB.
 
+## Collections Plex, demandes et acquisitions
+
+Ces routes réutilisent les URL et clés des Paramètres de Whatsarr. Aucun secret Arr ou Seerr n’est remis à Hermes. Configure Radarr, Sonarr et Overseerr (utilisé aussi pour Seerr) avant les appels. Les lectures Arr/Seerr ne sont pas limitées aux bibliothèques Récap ; les collections et la disponibilité Plex le sont. Ces appels n’envoient aucun message WhatsApp.
+
+### Collections Plex
+
+`GET /api/agent/media/collections?libraryKey=1&q=Saga&offset=0&limit=20` renvoie `source`, `items` (id, libraryKey, title, summary, childCount, collectionType) et `pagination` (offset, limit, hasMore). Tous les filtres sont facultatifs. Tri stable par titre, bibliothèque et identifiant ; limite de 1 à 100, 20 par défaut. Aucune bibliothèque Récap sélectionnée donne une liste vide.
+
+`GET /api/agent/media/collections/123/items?offset=0&limit=20` renvoie les films/séries au format du catalogue Plex. `q` et `libraryKey` sont facultatifs. L’appartenance de la collection à une bibliothèque Récap est vérifiée avant lecture ; une collection exclue donne 404 sans lecture de son contenu.
+
+### Suivi Radarr et Sonarr
+
+`GET /api/agent/radarr/movies?q=Dune&tagId=2&monitored=true&offset=0&limit=20`
+
+`GET /api/agent/sonarr/series?offset=0&limit=20`
+
+Filtres facultatifs : `q` (titre), `tagId` (ID positif), `monitored` (true/false), `offset` et `limit`. La réponse expose `source`, `items`, `pagination`. Chaque titre contient id, title, tmdbId, tvdbId, year, monitored, status, tags (id/libellé). Films : hasFile. Séries : episodeFileCount et episodeCount. Un titre suivi n’est pas nécessairement téléchargé ; une série avec quelques épisodes ne signifie pas complète.
+
+`GET /api/agent/radarr/tags` et `GET /api/agent/sonarr/tags` listent les tags existants. `GET /api/agent/radarr/options` et `GET /api/agent/sonarr/options` exposent qualityProfiles (id/name), rootFolders (id/path/accessible/freeSpace) et tags. Employer ces IDs lors des ajouts.
+
+`GET /api/agent/radarr/lookup?tmdbId=550` ou `GET /api/agent/sonarr/lookup?tvdbId=121361` résout un identifiant exact via le catalogue Arr. La recherche textuelle TMDB déjà documentée aide à trouver les identifiants ; ne pas convertir un ID TMDB en TVDB par supposition.
+
+### Ajouts directs et effets
+
+`POST /api/agent/radarr/movies` ajoute directement un film dans Radarr. `POST /api/agent/sonarr/series` ajoute directement une série dans Sonarr, sans créer de demande Seerr. `qualityProfileId` et `rootFolderId` sont obligatoires ; leurs choix et tous les tags doivent exister dans le service cible. Whatsarr résout lui-même les métadonnées depuis le lookup. Les chemins/métadonnées libres sont refusés.
+
+```bash
+curl -X POST http://IP_WHATSARR:3000/api/agent/radarr/movies \
+  -H 'Content-Type: application/json' \
+  -d '{"tmdbId":550,"qualityProfileId":1,"rootFolderId":1,"tagIds":[2],"monitored":true,"search":false}'
+
+curl -X POST http://IP_WHATSARR:3000/api/agent/sonarr/series \
+  -H 'Content-Type: application/json' \
+  -d '{"tvdbId":121361,"qualityProfileId":1,"rootFolderId":1,"tagIds":[],"seasonNumbers":[1],"monitored":true,"search":false}'
+```
+
+Ces exemples créent réellement un suivi lorsqu’ils sont exécutés : adapter les identifiants et les options. `monitored=true` par défaut autorise les acquisitions futures par le service. `search=false` par défaut ne lance pas de recherche immédiate ; `search=true` peut déclencher des téléchargements immédiatement. Sonarr suit par défaut les saisons hors spéciaux ; seasonNumbers permet la sélection explicite, y compris saison 0. Un tableau vide ne suit aucune saison.
+
+Réponse 201 : `source`, `item`, `deduplicated:false`. Réponse 200 : `deduplicated:true`, titre existant strictement inchangé (profil, tags et suivi existants conservés). Les ajouts simultanés sur le même identifiant sont sérialisés dans l’instance Whatsarr ; les conflits amont sont reconsultés. Une panne du journal ne répète jamais l’ajout.
+
+Après un délai dépassé ou une réponse perdue lors du POST, Whatsarr relit le suivi. Si le titre est confirmé, la réponse porte `reconciled:true`. Sinon `ARR_ADD_UNCERTAIN` signale une issue inconnue : consulter le suivi avant toute nouvelle tentative ; ne jamais relancer automatiquement un POST. Les refus amont explicites restent des erreurs connues. Aucun endpoint ne permet de modifier ou supprimer les titres existants.
+
+### Vérifier la disponibilité après l’ajout
+
+`GET /api/agent/media/availability?mediaType=movie&tmdbId=550`
+
+`GET /api/agent/media/availability?mediaType=series&tvdbId=121361`
+
+Seul l’identifiant du type demandé est accepté. La réponse distingue `arr` (state, tracked, item avec hasFile ou compteurs épisodes) et `plex` (state, present, items dans Récap). Correspondance exacte sur identifiants externes (y compris GUID Plex historiques TMDB/TVDB), jamais sur le titre. Si des médias sans identifiant exploitable empêchent de confirmer une absence, Plex devient `unknown` avec `PLEX_IDENTIFIERS_UNAVAILABLE`. `state:"unknown"` et `error.code` indiquent une source non configurée, refusée ou inaccessible ; l’échec d’une source ne devient jamais « absent ». Plex présent pour une série peut ne contenir qu’une partie des épisodes ; les compteurs n’impliquent pas que toute la série soit complète. Réinterroger après acquisition/import Plex.
+
+### Demandes Seerr avec demandeur
+
+`GET /api/agent/seerr/requests?mediaType=movie&status=2&requestedBy=7&offset=0&limit=20`
+
+`GET /api/agent/seerr/requests/42`
+
+Filtres facultatifs : mediaType (movie/series), status (statut demande numérique 1 à 5), requestedBy (ID utilisateur Seerr), offset/limit. La liste expose source, items, pagination et trie par ID ; les filtres précèdent la pagination. Les détails incluent title, IDs externes, requestStatus, mediaStatus, is4k, requestedBy (id/name), dates et saisons (seasonNumber/status). Une valeur inconnue reste null. Pour une demande `is4k:true`, `mediaStatus` utilise exclusivement le statut 4K Seerr (`status4k`) ; si ce statut manque, il reste null, sans reprise du statut standard. Aucun email/token n’est exposé. Ces routes ne créent/modifient aucune demande Seerr ; les vues Seerr et Arr représentent des états distincts.
+
+Erreurs de ces routes : 400 paramètres/choix invalides, 404 ressource absente/hors Récap, 409 service non configuré, 502 source refusée ou réponse inexploitable, 504 délai dépassé. Les erreurs portent un requestId. Les lectures ont un délai global de 15 secondes par session, 4 Mio par réponse et 32 Mio cumulés ; les catalogues trop volumineux ou incohérents sont refusés explicitement.
+
 ## Vérifications de développement
 
 Les tests automatisés couvrent HTTP NestJS, concurrence/persistance SQLite, worker, downloader, clients de médias et affichage des identifiants. Les envois et sources externes sont contrôlés ; aucun message de test n'est publié au groupe réel.

@@ -32,6 +32,7 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
     <section className="service-panel">
       <h2>Connecter Hermes</h2>
       <p>Appels locaux sans clé ni cookie. Les messages sont envoyés au groupe serveur choisi dans WhatsApp.</p>
+      <Address label="Relais API générique · POST" value={`${origin}/api/agent/relay`} />
       <Address label="Webhook d’envoi · POST" value={addresses.webhook} />
       <Address label="Page de documentation" value={addresses.documentation} />
       <Address label="Contrat OpenAPI · JSON" value={addresses.openapi} />
@@ -44,6 +45,7 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
     <section className="service-panel">
       <h2>Ce que l’agent peut faire</h2>
       <ul>
+        <li>Appeler les API natives Plex, Radarr, Sonarr, Seerr, Tautulli et TMDB avec les identifiants stockés dans Whatsarr, sans filtre Récap sur le relais.</li>
         <li>Envoyer un texte, ou une photo JPEG/PNG avec sa légende.</li>
         <li>Suivre l’état d’envoi d’un message.</li>
         <li>Lister et rechercher les films et séries présents dans les bibliothèques Plex activées pour le Récap.</li>
@@ -53,7 +55,7 @@ export function HermesPage({ origin = window.location.origin }: { origin?: strin
         <li>Ajouter directement un film Radarr ou une série Sonarr et vérifier séparément suivi, fichiers et présence Plex.</li>
         <li>Interroger TMDB : recherche, recommandations, titres similaires, tendances, détails, acteurs, images, vidéos et plateformes.</li>
       </ul>
-      <p>Coche Récap pour les bibliothèques accessibles à Hermes. Configure Plex, Tautulli, TMDB, Radarr, Sonarr et Seerr (Overseerr) dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
+      <p>Coche Récap pour les bibliothèques accessibles par les anciennes routes Plex. Le relais générique utilise les droits complets du service. Configure Plex, Tautulli, TMDB, Radarr, Sonarr et Seerr (Overseerr) dans Paramètres, puis connecte WhatsApp et sélectionne le groupe. Hermes rédige et planifie ses publications ; Whatsarr transmet les messages et fournit les lectures.</p>
     </section>
   </div>;
 }

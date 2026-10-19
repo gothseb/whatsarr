@@ -8,6 +8,7 @@ import { configureAgentHttp } from "./modules/agent/agent-exception.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Installs the route-local relay parser before Nest registers its default 100 KiB parser.
   configureAgentHttp(app);
   const allowedOrigin = process.env.CORS_ORIGIN ?? "http://localhost:5173";
 

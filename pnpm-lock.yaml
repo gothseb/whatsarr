@@ -55,6 +55,9 @@ importers:
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
+      express:
+        specifier: 5.2.1
+        version: 5.2.1
       prisma:
         specifier: ^6.8.2
         version: 6.19.3(typescript@5.9.3)

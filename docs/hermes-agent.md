@@ -2,6 +2,8 @@
 
 L'agent appelle Whatsarr sur `http://IP_WHATSARR:3000/api/agent`, sans clé Hermes ni cookie, même lorsque l'interface administrateur exige une connexion. Whatsarr utilise sa session WhatsApp et son groupe serveur configuré. Hermes rédige les news et conseils et gère leur calendrier.
 
+Pour appeler librement les API des services configurés, utilise `POST /api/agent/relay` : méthode, chemin natif, paramètres et corps au choix, identifiants injectés par Whatsarr. Le relais n’applique aucun filtre Récap. Les sections précédentes du guide décrivent aussi les routes métier historiques ; la section Relais générique ci-dessous donne le contrat complet.
+
 Le contrat disponible est `GET /api/agent/openapi.json` ([version JSON](hermes-agent.openapi.json)). Les champs inconnus et cibles arbitraires sont refusés.
 
 ```bash
@@ -42,7 +44,7 @@ curl http://localhost:3000/api/agent/messages/JOB_ID
 
 ## Catalogue Plex et bibliothèques autorisées
 
-Hermes peut consulter les films et séries présents dans Plex avec `GET /api/agent/media/catalogue`. Seules les bibliothèques dont la case **Récap** est cochée dans la gestion des bibliothèques sont accessibles. La case des messages automatiques seule ne donne pas accès à l’agent. Cette sélection s’applique aussi à la recherche et aux derniers ajouts Plex ; elle est relue à chaque appel.
+Hermes peut consulter les films et séries présents dans Plex avec `GET /api/agent/media/catalogue`. Seules les bibliothèques dont la case **Récap** est cochée dans la gestion des bibliothèques sont accessibles. La case des messages automatiques seule ne donne pas accès à l’agent. Cette sélection s’applique aussi aux anciennes routes de recherche et de derniers ajouts Plex ; elle est relue à chaque appel. Le relais générique Plex décrit plus bas conserve les droits natifs du compte, sans ce filtre.
 
 ```bash
 # Films et séries, première page
@@ -234,6 +236,66 @@ Seul l’identifiant du type demandé est accepté. La réponse distingue `arr` 
 Filtres facultatifs : mediaType (movie/series), status (statut demande numérique 1 à 5), requestedBy (ID utilisateur Seerr), offset/limit. La liste expose source, items, pagination et trie par ID ; les filtres précèdent la pagination. Les détails incluent title, IDs externes, requestStatus, mediaStatus, is4k, requestedBy (id/name), dates et saisons (seasonNumber/status). Une valeur inconnue reste null. Pour une demande `is4k:true`, `mediaStatus` utilise exclusivement le statut 4K Seerr (`status4k`) ; si ce statut manque, il reste null, sans reprise du statut standard. Aucun email/token n’est exposé. Ces routes ne créent/modifient aucune demande Seerr ; les vues Seerr et Arr représentent des états distincts.
 
 Erreurs de ces routes : 400 paramètres/choix invalides, 404 ressource absente/hors Récap, 409 service non configuré, 502 source refusée ou réponse inexploitable, 504 délai dépassé. Les erreurs portent un requestId. Les lectures ont un délai global de 15 secondes par session, 4 Mio par réponse et 32 Mio cumulés ; les catalogues trop volumineux ou incohérents sont refusés explicitement.
+
+## Relais générique vers les API natives
+
+`POST /api/agent/relay` est la passerelle générique pour Hermes, sans clé Hermes ni cookie. Whatsarr utilise uniquement le serveur et les identifiants enregistrés dans Paramètres : Hermes ne reçoit pas les clés des services. Contrairement aux routes métier précédentes, le relais accepte les commandes natives de l’API sans catalogue de commandes, normalisation métier ni filtre Récap. Une bibliothèque Plex exclue du Récap reste donc accessible par le relais si le compte Plex l’autorise. Les anciennes routes conservent leurs filtres et contrats.
+
+L’enveloppe comporte `service`, `method`, `path`, puis facultativement `query`, `headers`, `body` et `bodyEncoding`. Aucun autre champ d’enveloppe n’est accepté ; l’intérieur du corps JSON est libre, même un tableau, une chaîne, un nombre, un booléen ou null. Services : `plex`, `radarr`, `sonarr`, `overseerr`, `seerr` (alias d’overseerr), `tautulli`, `tmdb`. Méthodes : GET, HEAD, OPTIONS, POST, PUT, PATCH, DELETE. GET et HEAD n’ont pas de corps.
+
+Hermes construit ses commandes à partir des documentations natives : [Plex Media Server](https://developer.plex.tv/pms/), [Radarr](https://radarr.video/docs/api/), [Sonarr](https://sonarr.tv/docs/api/), [Overseerr / Seerr](https://api-docs.overseerr.dev/), [Tautulli](https://github.com/Tautulli/Tautulli/wiki/Tautulli-API-Reference) et [TMDB](https://developer.themoviedb.org/reference/intro/getting-started). Whatsarr ne maintient pas de liste de commandes pour le relais ; les paramètres nécessaires dépendent de la version du service installé.
+
+Le `path` est le chemin natif absolu, avec la version API requise par le service : `/api/v3/movie` pour Radarr, `/api/v3/series` pour Sonarr, `/api/v1/request` pour Seerr, `/library/sections` pour Plex, `/api/v2` pour Tautulli, `/3/...` ou `/4/...` pour TMDB. Whatsarr ne devine aucune version. Le préfixe du serveur configuré est conservé : serveur `http://radarr:7878/radarr` et path `/api/v3/movie` donnent `http://radarr:7878/radarr/api/v3/movie`. Les paramètres d’URL vont dans `query`, jamais dans `path`. Une URL complète, une autre origine, une traversée `..`, un fragment ou une redirection suivie sont interdits. TMDB utilise toujours `https://api.themoviedb.org`.
+
+```bash
+curl -X POST 'http://localhost:3000/api/agent/relay' \
+  -H 'Content-Type: application/json' \
+  -d '{"service":"radarr","method":"GET","path":"/api/v3/movie","query":{"tmdbId":550}}'
+```
+
+`query` accepte des valeurs texte, nombre ou booléen et des tableaux de ces valeurs. Un tableau produit des paramètres répétés, sans changer leur ordre : `{"tag":[1,2]}` produit `tag=1&tag=2`. Les valeurs null ou objets imbriqués sont refusées dans query ; les paramètres métier tels `username` ou `session_id` restent autorisés. `headers` accepte des valeurs texte. Aucun cookie de connexion Whatsarr n’est transféré. Les headers d’authentification, cookies, transport et routage sont réservés : Authorization, X-Api-Key, X-Plex-Token, Host, Content-Length, Connection, Forwarded, etc. Les paramètres d’authentification serveur `apikey`, `api_key` et `X-Plex-Token` sont aussi réservés et ne peuvent pas remplacer les identifiants injectés.
+
+Whatsarr injecte X-Plex-Token pour Plex, X-Api-Key pour Radarr/Sonarr/Seerr, apikey en query pour Tautulli, et Authorization Bearer ou api_key pour une clé TMDB hexadécimale de 32 caractères. Le relais dispose des droits de la clé enregistrée : il permet aussi les modifications et suppressions que l’API native autorise. Les permissions et validations métier restent celles du service.
+
+```json
+{
+  "service": "sonarr",
+  "method": "POST",
+  "path": "/api/v3/command",
+  "body": {"name": "SeriesSearch", "seriesId": 42}
+}
+```
+
+`bodyEncoding` vaut `json` par défaut. Avec `text`, body est une chaîne envoyée telle quelle, par exemple du XML. Avec `base64`, body est une chaîne base64 standard avec padding requis si nécessaire ; elle est décodée avant envoi pour transmettre des octets ou du multipart construit par Hermes. Un header Content-Type explicite est respecté, sinon application/json, text/plain ou application/octet-stream est choisi selon l’encodage. Ne pas fournir bodyEncoding en l’absence de body.
+
+```json
+{
+  "service": "plex",
+  "method": "GET",
+  "path": "/library/sections",
+  "headers": {"Accept": "application/json"}
+}
+```
+
+Quand le transport aboutit, Whatsarr répond HTTP 200 avec `service`, `upstreamStatus`, `headers`, `body`, `bodyEncoding`, `redacted` et `requestId`. Il faut toujours examiner `upstreamStatus` : un statut natif 400, 401, 404, 422 ou 500 reste une erreur du service, même si le relais répond 200. Une redirection native 3xx est rendue sans être suivie. Les réponses 204/304, HEAD ou corps vide sont rendues avec body null et bodyEncoding `empty` ; JSON natif donne `json`, texte/XML donne `text`, octets donnent `base64`. Un JSON amont malformé mais décodable en UTF-8 est rendu en texte. Le texte/XML utilise le charset déclaré (UTF-8 par défaut). Un charset inconnu ou des octets invalides pour cet encodage produisent une réponse base64 pour conserver les octets, après vérification des identifiants connus. Les headers utiles tels Content-Type, Location et Retry-After sont conservés ; les cookies, identifiants et headers de transport sont retirés.
+
+```json
+{
+  "service": "radarr",
+  "upstreamStatus": 200,
+  "headers": {"content-type": "application/json"},
+  "body": [{"id":42,"title":"Exemple","hasFile":true}],
+  "bodyEncoding": "json",
+  "redacted": false,
+  "requestId": "identifiant-de-correlation"
+}
+```
+
+Les clés enregistrées de tous les services (y compris leurs formes sans préfixe Bearer), leurs représentations encodées et les champs explicitement sensibles (apiKey, password, Authorization…) sont occultés dans les sorties JSON, texte, XML et headers : `redacted` devient true. Les champs métier tels ratingKey, username, session_id ou request_token restent utilisables si leur valeur ne contient pas une clé ou un mot de passe configuré. Les échappements URL mixtes et les entités XML numériques ou nommées sont pris en compte ; une valeur numérique ou booléenne JSON reflétant une clé est aussi occultée. Un binaire contenant un identifiant connu est refusé avec RELAY_SECRET_IN_BINARY plutôt que modifié. Aucun payload ou URL authentifiée n’est journalisé par le relais.
+
+Les erreurs propres à Whatsarr gardent le format `{"error":{"code":"…","message":"…","requestId":"…"}}` : 400 AGENT_INVALID_REQUEST pour une enveloppe invalide, 409 RELAY_NOT_CONFIGURED si le service manque d’URL/clé, 413 AGENT_INVALID_REQUEST si la requête dépasse la limite, 413 RELAY_RESPONSE_TOO_LARGE si la réponse dépasse la limite, 502 RELAY_UPSTREAM_ERROR pour une rupture réseau, 502 RELAY_SECRET_IN_BINARY et 504 RELAY_TIMEOUT. Après un délai ou une rupture lors d’une écriture, le service peut avoir appliqué l’action : consulter son état avant toute nouvelle demande. Whatsarr ne répète jamais automatiquement un appel, ne pagine pas et ne déduplique pas pour Hermes.
+
+Les plafonds configurables sont `RELAY_MAX_REQUEST_BYTES` (10 Mio pour l’enveloppe JSON entière, donc tenir compte de l’expansion base64), `RELAY_MAX_RESPONSE_BYTES` (32 Mio d’octets amont décompressés) et `RELAY_TIMEOUT_MS` (30 000 ms, lecture du corps comprise). Les anciennes routes gardent leur limite JSON de 100 Kio. Le relais ne fournit pas de WebSocket ni de SSE infini. Pour une tâche longue, lancer la commande native puis interroger son statut avec d’autres appels.
 
 ## Vérifications de développement
 

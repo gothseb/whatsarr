@@ -43,6 +43,10 @@ async function smoke() {
       const response=await fetch(`${base}/api/agent/${route}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...id,qualityProfileId:1,rootFolderId:1})});
       assert.equal(response.status,409);assert.ok((await response.json()).error.requestId);
     }
+    const relay=await fetch(`${base}/api/agent/relay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:"radarr",method:"GET",path:"/api/v3/movie"})});
+    assert.equal(relay.status,409);assert.equal((await relay.json()).error.code,"RELAY_NOT_CONFIGURED");
+    const largeRelay=await fetch(`${base}/api/agent/relay`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:"radarr",method:"POST",path:"/api/v3/movie",body:{arbitrary:{nested:"x".repeat(150*1024)}}})});
+    assert.equal(largeRelay.status,409);assert.equal((await largeRelay.json()).error.code,"RELAY_NOT_CONFIGURED");
     const message=await fetch(`${base}/api/agent/messages`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({messageId:"smoke",text:"No send"})});
     assert.equal(message.status,409);assert.equal((await message.json()).error.code,"WHATSAPP_GROUP_NOT_SELECTED");
     const malformed=await fetch(`${base}/api/agent/messages`,{method:"POST",headers:{"Content-Type":"application/json"},body:"{"});assert.equal(malformed.status,400);assert.equal((await malformed.json()).error.code,"AGENT_INVALID_REQUEST");

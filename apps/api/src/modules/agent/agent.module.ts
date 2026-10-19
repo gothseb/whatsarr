@@ -1,3 +1,6 @@
+import { AgentRelayController } from "./agent-relay.controller";
+import { AgentRelayService } from "./agent-relay.service";
+import { AgentRelayPipe } from "./agent-relay.dto";
 import { AgentArrController } from "./agent-arr.controller";
 import { AgentArrService } from "./agent-arr.service";
 import { AgentRequestsController } from "./agent-requests.controller";
@@ -18,5 +21,5 @@ import { SettingsModule } from "../settings/settings.module";
 import { AgentTmdbController } from "./agent-tmdb.controller";
 import { AgentTmdbService } from "./agent-tmdb.service";
 
-@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule, SettingsModule], controllers: [AgentController, AgentTmdbController, AgentArrController, AgentRequestsController, AgentCollectionsController], providers: [AgentService, AgentMessagePipe, AgentCataloguePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe, AgentTmdbService, AgentArrService, AgentRequestsService, AgentAvailabilityService] })
+@Module({ imports: [NotificationsModule, WhatsAppModule, PlexModule, TautulliModule, SettingsModule], controllers: [AgentRelayController, AgentController, AgentTmdbController, AgentArrController, AgentRequestsController, AgentCollectionsController], providers: [AgentRelayService, AgentRelayPipe, AgentService, AgentMessagePipe, AgentCataloguePipe, AgentSearchPipe, AgentRecentPipe, AgentHistoryPipe, AgentTmdbService, AgentArrService, AgentRequestsService, AgentAvailabilityService] })
 export class AgentModule {}

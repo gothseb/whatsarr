@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Whatsarr Hermes local API",
-    "version": "1.3.0"
+    "version": "1.4.0"
   },
   "servers": [
     {
@@ -2101,6 +2101,57 @@
           }
         }
       }
+    },
+    "/api/agent/relay": {
+      "post": {
+        "summary": "Relais générique vers les API natives configurées, sans filtre métier ni Récap.",
+        "description": "Sans clé Hermes ni cookie. Toutes les méthodes/actions natives permises par la clé du service ; pas de retry, pagination automatique ni redirection suivie. Examiner upstreamStatus, même quand le relais répond HTTP 200. Limites par défaut : requête 10 Mio, réponse 32 Mio, 30 secondes ; configurables RELAY_MAX_REQUEST_BYTES, RELAY_MAX_RESPONSE_BYTES, RELAY_TIMEOUT_MS.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelayRequest"
+              },
+              "example": {
+                "service": "radarr",
+                "method": "GET",
+                "path": "/api/v3/movie",
+                "query": {
+                  "tmdbId": 550
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transport abouti ; le statut natif 2xx/3xx/4xx/5xx est upstreamStatus.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelayResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "AGENT_INVALID_REQUEST : enveloppe, chemin ou authentification contradictoire."
+          },
+          "409": {
+            "description": "RELAY_NOT_CONFIGURED : configuration absente ou invalide."
+          },
+          "413": {
+            "description": "AGENT_INVALID_REQUEST ou RELAY_RESPONSE_TOO_LARGE : plafond dépassé."
+          },
+          "502": {
+            "description": "RELAY_UPSTREAM_ERROR ou RELAY_SECRET_IN_BINARY : erreur transport ou secret binaire."
+          },
+          "504": {
+            "description": "RELAY_TIMEOUT : ne pas répéter une écriture sans vérifier son résultat natif."
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2846,6 +2897,145 @@
           "collectionType": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "RelayRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "service",
+          "method",
+          "path"
+        ],
+        "properties": {
+          "service": {
+            "type": "string",
+            "enum": [
+              "plex",
+              "radarr",
+              "sonarr",
+              "overseerr",
+              "seerr",
+              "tautulli",
+              "tmdb"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "GET",
+              "HEAD",
+              "OPTIONS",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 8192,
+            "description": "Chemin natif absolu avec version API ; conservé sous le préfixe URL configuré. Pas de query, fragment ni origine."
+          },
+          "query": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "oneOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Headers métier ; authentification/cookies/transport réservés."
+          },
+          "body": {
+            "description": "JSON natif quelconque (y compris null), chaîne text ou chaîne base64 standard selon bodyEncoding. Interdit pour GET/HEAD.",
+            "nullable": true
+          },
+          "bodyEncoding": {
+            "type": "string",
+            "enum": [
+              "json",
+              "text",
+              "base64"
+            ],
+            "default": "json"
+          }
+        }
+      },
+      "RelayResult": {
+        "type": "object",
+        "required": [
+          "service",
+          "upstreamStatus",
+          "headers",
+          "body",
+          "bodyEncoding",
+          "redacted",
+          "requestId"
+        ],
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "upstreamStatus": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "body": {
+            "nullable": true,
+            "description": "Corps natif après occultation des identifiants ; null pour corps vide."
+          },
+          "bodyEncoding": {
+            "type": "string",
+            "enum": [
+              "json",
+              "text",
+              "base64",
+              "empty"
+            ]
+          },
+          "redacted": {
+            "type": "boolean"
+          },
+          "requestId": {
+            "type": "string"
           }
         }
       }

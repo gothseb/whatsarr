@@ -8,7 +8,7 @@ export default defineConfig({
     apply: "build",
     buildStart() {
       const guide = readFileSync(new URL("../../docs/hermes-agent.md", import.meta.url), "utf8");
-      const routes = ["/api/agent/messages", "/api/agent/media/catalogue", "/api/agent/media/collections", "/api/agent/radarr/movies", "/api/agent/sonarr/series", "/api/agent/seerr/requests", "/api/agent/media/search", "/api/agent/media/recent", "/api/agent/watch-history", "/api/agent/openapi.json", "/api/agent/tmdb?path=", "/api/agent/tmdb/catalogue"];
+      const routes = ["/api/agent/relay", "/api/agent/messages", "/api/agent/media/catalogue", "/api/agent/media/collections", "/api/agent/radarr/movies", "/api/agent/sonarr/series", "/api/agent/seerr/requests", "/api/agent/media/search", "/api/agent/media/recent", "/api/agent/watch-history", "/api/agent/openapi.json", "/api/agent/tmdb?path=", "/api/agent/tmdb/catalogue"];
       if (guide.includes("Documentation à compléter") || routes.some((route) => !guide.includes(route))) {
         this.error("La documentation Hermes est incomplète. Restaurez docs/hermes-agent.md depuis le dépôt avant de construire l’application.");
       }

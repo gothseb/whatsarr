@@ -1,3 +1,5 @@
+import { json } from "express";
+import { relayLimit } from "./agent-relay.service";
 import { ArgumentsHost, Catch, HttpException, INestApplication } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
 import type { Request, Response, NextFunction } from "express";
@@ -32,6 +34,12 @@ export function configureAgentHttp(app: INestApplication) {
   app.use((request: AgentRequest, _response: Response, next: NextFunction) => {
     if (isAgentPath(request)) request.agentRequestId = randomUUID();
     next();
+  });
+  // Installed before Nest's default parser; Express skips an already-consumed relay body.
+  const relayParser = json({ limit: relayLimit("RELAY_MAX_REQUEST_BYTES", 10 * 1024 * 1024), strict: true });
+  app.use((request: AgentRequest, response: Response, next: NextFunction) => {
+    if (request.method === "POST" && /^\/api\/agent\/relay\/?(?:\?|$)/i.test(request.originalUrl)) relayParser(request, response, next);
+    else next();
   });
   app.useGlobalFilters(new AgentExceptionFilter(app.getHttpAdapter()));
 }
